@@ -5,13 +5,13 @@
 resource "aws_iam_role" "lambda_role" {
   name        = "${local.prefix}-${local.environment}-lambda-role"
   description = "Role for Lambda functions with permissions for S3, RDS and CloudWatch"
-  
+
   # Política de confianza para permitir que Lambda asuma este rol
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Action    = "sts:AssumeRole"
-      Effect    = "Allow"
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
       Principal = {
         Service = "lambda.amazonaws.com"
       }
@@ -20,7 +20,7 @@ resource "aws_iam_role" "lambda_role" {
 
   # Prevenir eliminación accidental
   force_detach_policies = true
-  
+
   # Etiquetas consistentes
   tags = merge(
     local.common_tags,
@@ -40,7 +40,7 @@ resource "aws_iam_role_policy_attachment" "lambda_basic_attach" {
 resource "aws_iam_policy" "lambda_s3_policy" {
   name        = "${local.prefix}-${local.environment}-lambda-s3-policy"
   description = "Policy for Lambda to access S3 buckets"
-  
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -59,7 +59,7 @@ resource "aws_iam_policy" "lambda_s3_policy" {
       }
     ]
   })
-  
+
   tags = local.common_tags
 }
 
@@ -73,7 +73,7 @@ resource "aws_iam_role_policy_attachment" "lambda_s3_attach" {
 resource "aws_iam_policy" "lambda_rds_policy" {
   name        = "${local.prefix}-${local.environment}-lambda-rds-policy"
   description = "Policy for Lambda to access RDS"
-  
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -88,7 +88,7 @@ resource "aws_iam_policy" "lambda_rds_policy" {
       }
     ]
   })
-  
+
   tags = local.common_tags
 }
 
@@ -102,7 +102,7 @@ resource "aws_iam_role_policy_attachment" "lambda_rds_attach" {
 resource "aws_iam_policy" "lambda_cloudwatch_policy" {
   name        = "${local.prefix}-${local.environment}-lambda-cloudwatch-policy"
   description = "Extended CloudWatch policy for Lambda"
-  
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -121,7 +121,7 @@ resource "aws_iam_policy" "lambda_cloudwatch_policy" {
       }
     ]
   })
-  
+
   tags = local.common_tags
 }
 
@@ -135,27 +135,27 @@ resource "aws_iam_role_policy_attachment" "lambda_cloudwatch_attach" {
 resource "aws_iam_role" "devops_role" {
   name        = "${local.prefix}-${local.environment}-devops-role"
   description = "Role for DevOps engineers with Terraform/CLI permissions"
-  
+
   # Política de confianza - Usar variable para el ID de cuenta
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
       Effect = "Allow"
       Principal = {
-        "AWS": "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+        "AWS" : "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
       }
       Action = "sts:AssumeRole"
       Condition = {
         StringEquals = {
-          "aws:PrincipalTag/Role": "DevOps"
+          "aws:PrincipalTag/Role" : "DevOps"
         }
       }
     }]
   })
-  
+
   # Prevenir eliminación accidental
   force_detach_policies = true
-  
+
   # Etiquetas consistentes
   tags = merge(
     local.common_tags,
@@ -176,7 +176,7 @@ resource "aws_iam_policy" "restricted_admin_policy" {
   count       = local.environment == "prod" ? 1 : 0
   name        = "${local.prefix}-${local.environment}-restricted-admin-policy"
   description = "Restricted admin policy for production environment"
-  
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -210,7 +210,7 @@ resource "aws_iam_policy" "restricted_admin_policy" {
       }
     ]
   })
-  
+
   tags = local.common_tags
 }
 

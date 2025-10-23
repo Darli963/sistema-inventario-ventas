@@ -14,16 +14,11 @@ resource "aws_apigatewayv2_api" "api_gateway" {
     allow_credentials = false
     allow_headers     = ["content-type", "x-amz-date", "authorization", "x-api-key", "x-amz-security-token"]
     allow_methods     = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-    allow_origins     = var.environment == "prod" ? ["https://${aws_cloudfront_distribution.frontend_cdn.domain_name}"] : ["*"]
+    allow_origins     = var.environment == "prod" ? ["https://${var.domain_name != null && trimspace(var.domain_name) != "" ? var.domain_name : "localhost"}"] : ["*"]
     expose_headers    = ["date", "keep-alive"]
-    max_age          = 86400
+    max_age           = 86400
   }
 
-  # Configuración de throttling
-  throttle_config {
-    burst_limit = var.environment == "prod" ? 2000 : 500
-    rate_limit  = var.environment == "prod" ? 1000 : 200
-  }
 
   tags = merge(
     local.common_tags,
@@ -45,24 +40,24 @@ resource "aws_apigatewayv2_stage" "api_stage" {
   access_log_settings {
     destination_arn = aws_cloudwatch_log_group.api_gateway_logs.arn
     format = jsonencode({
-      requestId      = "$context.requestId"
-      ip            = "$context.identity.sourceIp"
-      requestTime   = "$context.requestTime"
-      httpMethod    = "$context.httpMethod"
-      routeKey      = "$context.routeKey"
-      status        = "$context.status"
-      protocol      = "$context.protocol"
-      responseLength = "$context.responseLength"
-      responseTime  = "$context.responseTime"
-      error         = "$context.error.message"
+      requestId        = "$context.requestId"
+      ip               = "$context.identity.sourceIp"
+      requestTime      = "$context.requestTime"
+      httpMethod       = "$context.httpMethod"
+      routeKey         = "$context.routeKey"
+      status           = "$context.status"
+      protocol         = "$context.protocol"
+      responseLength   = "$context.responseLength"
+      responseTime     = "$context.responseTime"
+      error            = "$context.error.message"
       integrationError = "$context.integration.error"
     })
   }
 
   # Configuración de throttling por stage
-  throttle_settings {
-    burst_limit = var.environment == "prod" ? 1000 : 200
-    rate_limit  = var.environment == "prod" ? 500 : 100
+  default_route_settings {
+    throttling_burst_limit = var.environment == "prod" ? 1000 : 200
+    throttling_rate_limit  = var.environment == "prod" ? 500 : 100
   }
 
   tags = merge(

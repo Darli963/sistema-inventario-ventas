@@ -9,12 +9,12 @@ resource "random_id" "bucket_suffix" {
 # Bucket S3 privado para datos sensibles con cifrado KMS
 resource "aws_s3_bucket" "private_bucket" {
   bucket = "${local.prefix}-${var.environment}-private-${random_id.bucket_suffix.hex}"
-  
+
   tags = merge(
     local.common_tags,
     {
-      Name = "${local.prefix}-${var.environment}-private"
-      Type = "Storage"
+      Name    = "${local.prefix}-${var.environment}-private"
+      Type    = "Storage"
       Purpose = "Private Data"
     }
   )
@@ -29,7 +29,7 @@ resource "aws_s3_bucket_ownership_controls" "private_ownership" {
 }
 
 resource "aws_s3_bucket_public_access_block" "private_block" {
-  bucket = aws_s3_bucket.private_bucket.id
+  bucket                  = aws_s3_bucket.private_bucket.id
   block_public_acls       = true
   ignore_public_acls      = true
   block_public_policy     = true
@@ -64,6 +64,9 @@ resource "aws_s3_bucket_lifecycle_configuration" "private_lifecycle" {
   rule {
     id     = "private_data_lifecycle"
     status = "Enabled"
+    filter {
+      prefix = ""
+    }
 
     # Transición a IA después de 30 días
     transition {
@@ -95,7 +98,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "private_lifecycle" {
     }
 
     noncurrent_version_expiration {
-      noncurrent_days = var.environment == "prod" ? 2555 : 90  # 7 años en prod, 90 días en dev
+      noncurrent_days = var.environment == "prod" ? 2555 : 90 # 7 años en prod, 90 días en dev
     }
 
     # Eliminar uploads incompletos después de 7 días
@@ -108,12 +111,12 @@ resource "aws_s3_bucket_lifecycle_configuration" "private_lifecycle" {
 # Bucket S3 público para frontend
 resource "aws_s3_bucket" "frontend_bucket" {
   bucket = "${local.prefix}-${var.environment}-frontend-${random_id.bucket_suffix.hex}"
-  
+
   tags = merge(
     local.common_tags,
     {
-      Name = "${local.prefix}-${var.environment}-frontend"
-      Type = "Storage"
+      Name    = "${local.prefix}-${var.environment}-frontend"
+      Type    = "Storage"
       Purpose = "Frontend Assets"
     }
   )
@@ -128,7 +131,7 @@ resource "aws_s3_bucket_ownership_controls" "frontend_ownership" {
 }
 
 resource "aws_s3_bucket_public_access_block" "frontend_block" {
-  bucket = aws_s3_bucket.frontend_bucket.id
+  bucket                  = aws_s3_bucket.frontend_bucket.id
   block_public_acls       = true
   ignore_public_acls      = true
   block_public_policy     = true
@@ -162,6 +165,9 @@ resource "aws_s3_bucket_lifecycle_configuration" "frontend_lifecycle" {
   rule {
     id     = "frontend_assets_lifecycle"
     status = "Enabled"
+    filter {
+      prefix = ""
+    }
 
     # Eliminar versiones no actuales después de 30 días
     noncurrent_version_expiration {
@@ -188,18 +194,6 @@ resource "aws_s3_bucket_website_configuration" "frontend_website" {
   }
 }
 
-# Notificaciones S3 para bucket privado (opcional)
-resource "aws_s3_bucket_notification" "private_bucket_notification" {
-  count  = var.environment == "prod" ? 1 : 0
-  bucket = aws_s3_bucket.private_bucket.id
-
-  cloudwatch_configuration {
-    cloudwatch_configuration_id = "EntireBucket"
-    events                      = ["s3:ObjectCreated:*", "s3:ObjectRemoved:*"]
-  }
-
-  depends_on = [aws_s3_bucket.private_bucket]
-}
 
 # Identidad de acceso de origen de CloudFront (OAI)
 resource "aws_cloudfront_origin_access_identity" "oai" {
@@ -239,7 +233,7 @@ resource "aws_cloudfront_distribution" "frontend_distribution" {
   origin {
     domain_name = replace(aws_apigatewayv2_api.api_gateway.api_endpoint, "https://", "")
     origin_id   = "API-Gateway"
-    
+
     custom_origin_config {
       http_port              = 80
       https_port             = 443
@@ -452,6 +446,9 @@ resource "aws_s3_bucket_lifecycle_configuration" "cloudfront_logs_lifecycle" {
   rule {
     id     = "cloudfront_logs_lifecycle"
     status = "Enabled"
+    filter {
+      prefix = ""
+    }
 
     transition {
       days          = 30

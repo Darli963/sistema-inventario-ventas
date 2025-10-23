@@ -16,7 +16,7 @@ provider "aws" {
 locals {
   prefix      = "mc"
   environment = var.environment
-  
+
   # Tags comunes para todos los recursos
   common_tags = {
     Project     = "sistema-inventario-ventas"
@@ -31,7 +31,7 @@ resource "aws_vpc" "main" {
   cidr_block           = var.vpc_cidr
   enable_dns_support   = true
   enable_dns_hostnames = true
-  
+
   tags = merge(
     local.common_tags,
     {
@@ -47,7 +47,7 @@ resource "aws_subnet" "public" {
   cidr_block              = var.public_subnets[count.index]
   availability_zone       = var.availability_zones[count.index]
   map_public_ip_on_launch = true
-  
+
   tags = merge(
     local.common_tags,
     {
@@ -62,7 +62,7 @@ resource "aws_subnet" "private" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = var.private_subnets[count.index]
   availability_zone = var.availability_zones[count.index]
-  
+
   tags = merge(
     local.common_tags,
     {
@@ -74,7 +74,7 @@ resource "aws_subnet" "private" {
 # 4️⃣ Internet Gateway
 resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.main.id
-  
+
   tags = merge(
     local.common_tags,
     {
@@ -86,7 +86,7 @@ resource "aws_internet_gateway" "igw" {
 # 5️⃣ NAT Gateway
 resource "aws_eip" "nat" {
   domain = "vpc"
-  
+
   tags = merge(
     local.common_tags,
     {
@@ -98,14 +98,14 @@ resource "aws_eip" "nat" {
 resource "aws_nat_gateway" "nat" {
   allocation_id = aws_eip.nat.id
   subnet_id     = aws_subnet.public[0].id
-  
+
   tags = merge(
     local.common_tags,
     {
       Name = "${local.prefix}-${local.environment}-nat"
     }
   )
-  
+
   # Buena práctica: esperar a que el Internet Gateway esté completamente creado
   depends_on = [aws_internet_gateway.igw]
 }
@@ -113,12 +113,12 @@ resource "aws_nat_gateway" "nat" {
 # 6️⃣ Route Table para subnets públicas
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
-  
+
   route {
     cidr_block = "0.0.0.0/0"
     gateway_id = aws_internet_gateway.igw.id
   }
-  
+
   tags = merge(
     local.common_tags,
     {
@@ -137,12 +137,12 @@ resource "aws_route_table_association" "public" {
 # 7️⃣ Route Table para subnets privadas
 resource "aws_route_table" "private" {
   vpc_id = aws_vpc.main.id
-  
+
   route {
     cidr_block     = "0.0.0.0/0"
     nat_gateway_id = aws_nat_gateway.nat.id
   }
-  
+
   tags = merge(
     local.common_tags,
     {

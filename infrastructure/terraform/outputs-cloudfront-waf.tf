@@ -105,7 +105,7 @@ output "waf_configuration_summary" {
     geo_blocking_enabled = var.enable_geo_blocking
     blocked_countries    = var.blocked_countries
     allowed_countries    = var.allowed_countries
-    rate_limit          = var.environment == "prod" ? 2000 : 1000
-    environment         = var.environment
+    rate_limit           = var.environment == "prod" ? 2000 : 1000
+    environment          = var.environment
   }
 }

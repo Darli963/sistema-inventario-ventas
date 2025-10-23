@@ -4,8 +4,8 @@
 
 # Grupo de subredes para RDS
 resource "aws_db_subnet_group" "rds_subnets" {
-  name       = "${local.prefix}-${var.environment}-subnet-group"
-  subnet_ids = aws_subnet.private[*].id
+  name        = "${local.prefix}-${var.environment}-subnet-group"
+  subnet_ids  = aws_subnet.private[*].id
   description = "Subnet group para instancias RDS"
 
   tags = merge(
@@ -19,8 +19,8 @@ resource "aws_db_subnet_group" "rds_subnets" {
 
 # Grupo de parámetros personalizado para MySQL 8.0
 resource "aws_db_parameter_group" "mysql_params" {
-  family = "mysql8.0"
-  name   = "${local.prefix}-${var.environment}-mysql-params"
+  family      = "mysql8.0"
+  name        = "${local.prefix}-${var.environment}-mysql-params"
   description = "Parámetros personalizados para MySQL 8.0"
 
   # Optimizaciones para rendimiento
@@ -56,52 +56,52 @@ resource "aws_db_parameter_group" "mysql_params" {
 resource "aws_db_instance" "rds_primary" {
   identifier     = "${local.prefix}-${var.environment}-rds-primary"
   engine         = "mysql"
-  engine_version = "8.0.35"  # Versión específica LTS
+  engine_version = "8.0.35" # Versión específica LTS
   instance_class = var.environment == "prod" ? "db.t3.small" : "db.t3.micro"
-  
+
   # Configuración de almacenamiento
   allocated_storage     = 20
   max_allocated_storage = var.environment == "prod" ? 200 : 100
   storage_type          = "gp3"
   storage_encrypted     = true
-  kms_key_id           = aws_kms_key.data_key.arn
-  
+  kms_key_id            = aws_kms_key.data_key.arn
+
   # Configuración de red y seguridad
   db_subnet_group_name   = aws_db_subnet_group.rds_subnets.name
   vpc_security_group_ids = [aws_security_group.rds_sg.id]
   publicly_accessible    = false
-  
+
   # Credenciales desde Secrets Manager
-  manage_master_user_password = true
+  manage_master_user_password   = true
   master_user_secret_kms_key_id = aws_kms_key.data_key.arn
-  username = "admin"
-  db_name  = "inventario"
-  
+  username                      = "admin"
+  db_name                       = "inventario"
+
   # Configuración de alta disponibilidad
   multi_az = var.environment == "prod" ? true : false
-  
+
   # Configuración de backup
-  backup_retention_period = var.environment == "prod" ? 7 : 1
-  backup_window          = "03:00-04:00"
-  maintenance_window     = "Mon:04:30-Mon:05:30"
-  copy_tags_to_snapshot  = true
+  backup_retention_period  = var.environment == "prod" ? 7 : 1
+  backup_window            = "03:00-04:00"
+  maintenance_window       = "Mon:04:30-Mon:05:30"
+  copy_tags_to_snapshot    = true
   delete_automated_backups = var.environment != "prod"
-  
+
   # Configuración de parámetros
   parameter_group_name = aws_db_parameter_group.mysql_params.name
-  
+
   # Configuración de monitoreo
-  performance_insights_enabled = var.environment == "prod" ? true : false
+  performance_insights_enabled          = var.environment == "prod" ? true : false
   performance_insights_retention_period = var.environment == "prod" ? 7 : 0
-  monitoring_interval = var.environment == "prod" ? 60 : 0
-  monitoring_role_arn = var.environment == "prod" ? aws_iam_role.rds_monitoring[0].arn : null
-  enabled_cloudwatch_logs_exports = ["error", "general", "slow-query"]
-  
+  monitoring_interval                   = var.environment == "prod" ? 60 : 0
+  monitoring_role_arn                   = var.environment == "prod" ? aws_iam_role.rds_monitoring[0].arn : null
+  enabled_cloudwatch_logs_exports       = ["error", "general", "slowquery"]
+
   # Configuración de seguridad
-  deletion_protection = var.environment == "prod" ? true : false
-  skip_final_snapshot = var.environment != "prod"
+  deletion_protection       = var.environment == "prod" ? true : false
+  skip_final_snapshot       = var.environment != "prod"
   final_snapshot_identifier = var.environment == "prod" ? "${local.prefix}-${var.environment}-final-snapshot-${formatdate("YYYY-MM-DD-hhmm", timestamp())}" : null
-  
+
   # Timeouts personalizados
   timeouts {
     create = "60m"
@@ -122,30 +122,30 @@ resource "aws_db_instance" "rds_primary" {
 # RDS réplica de lectura (solo para producción)
 resource "aws_db_instance" "rds_replica" {
   count = var.environment == "prod" ? 1 : 0
-  
-  identifier               = "${local.prefix}-${var.environment}-rds-replica"
-  replicate_source_db      = aws_db_instance.rds_primary.identifier
-  instance_class           = "db.t3.small"
-  
+
+  identifier          = "${local.prefix}-${var.environment}-rds-replica"
+  replicate_source_db = aws_db_instance.rds_primary.identifier
+  instance_class      = "db.t3.small"
+
   # Configuración de red
-  vpc_security_group_ids   = [aws_security_group.rds_sg.id]
-  publicly_accessible      = false
-  
+  vpc_security_group_ids = [aws_security_group.rds_sg.id]
+  publicly_accessible    = false
+
   # Configuración de almacenamiento (heredada de la principal)
-  storage_encrypted        = true
-  kms_key_id              = aws_kms_key.data_key.arn
-  
+  storage_encrypted = true
+  kms_key_id        = aws_kms_key.data_key.arn
+
   # Configuración de monitoreo
-  performance_insights_enabled = true
+  performance_insights_enabled          = true
   performance_insights_retention_period = 7
-  monitoring_interval = 60
-  monitoring_role_arn = aws_iam_role.rds_monitoring[0].arn
-  
+  monitoring_interval                   = 60
+  monitoring_role_arn                   = aws_iam_role.rds_monitoring[0].arn
+
   # Configuración de seguridad
-  deletion_protection = true
-  skip_final_snapshot = false
+  deletion_protection       = true
+  skip_final_snapshot       = false
   final_snapshot_identifier = "${local.prefix}-${var.environment}-replica-final-snapshot-${formatdate("YYYY-MM-DD-hhmm", timestamp())}"
-  
+
   # Timeouts personalizados
   timeouts {
     create = "60m"
@@ -166,7 +166,7 @@ resource "aws_db_instance" "rds_replica" {
 # Rol IAM para monitoreo de RDS (solo para producción)
 resource "aws_iam_role" "rds_monitoring" {
   count = var.environment == "prod" ? 1 : 0
-  
+
   name = "${local.prefix}-${var.environment}-rds-monitoring-role"
 
   assume_role_policy = jsonencode({
@@ -188,7 +188,7 @@ resource "aws_iam_role" "rds_monitoring" {
 # Política para el rol de monitoreo
 resource "aws_iam_role_policy_attachment" "rds_monitoring" {
   count = var.environment == "prod" ? 1 : 0
-  
+
   role       = aws_iam_role.rds_monitoring[0].name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole"
 }

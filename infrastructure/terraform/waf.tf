@@ -127,25 +127,27 @@ resource "aws_wafv2_web_acl" "frontend_waf" {
   }
 
   # Regla 5: Geo Blocking (opcional)
-  rule {
-    count = var.enable_geo_blocking ? 1 : 0
-    name     = "GeoBlockingRule"
-    priority = 5
+  dynamic "rule" {
+    for_each = var.enable_geo_blocking ? [1] : []
+    content {
+      name     = "GeoBlockingRule"
+      priority = 5
 
-    action {
-      block {}
-    }
-
-    statement {
-      geo_match_statement {
-        country_codes = var.blocked_countries
+      action {
+        block {}
       }
-    }
 
-    visibility_config {
-      cloudwatch_metrics_enabled = true
-      metric_name                = "GeoBlockingRule"
-      sampled_requests_enabled   = true
+      statement {
+        geo_match_statement {
+          country_codes = var.blocked_countries
+        }
+      }
+
+      visibility_config {
+        cloudwatch_metrics_enabled = true
+        metric_name                = "GeoBlockingRule"
+        sampled_requests_enabled   = true
+      }
     }
   }
 
@@ -300,7 +302,7 @@ resource "aws_wafv2_web_acl_logging_configuration" "waf_logging" {
 # Alarma de CloudWatch para WAF
 resource "aws_cloudwatch_metric_alarm" "waf_blocked_requests" {
   count = var.environment == "prod" ? 1 : 0
-  
+
   alarm_name          = "${local.prefix}-${var.environment}-waf-blocked-requests"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = "2"
@@ -325,7 +327,7 @@ resource "aws_cloudwatch_metric_alarm" "waf_blocked_requests" {
 resource "aws_sns_topic" "alerts" {
   count = var.environment == "prod" ? 1 : 0
   name  = "${local.prefix}-${var.environment}-security-alerts"
-  
+
   kms_master_key_id = aws_kms_key.data_key.arn
 
   tags = merge(

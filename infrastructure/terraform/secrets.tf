@@ -14,7 +14,7 @@ resource "aws_secretsmanager_secret" "rds_credentials" {
   name                    = "${local.prefix}-${var.environment}-rds-credentials"
   description             = "Credenciales para la base de datos RDS principal"
   recovery_window_in_days = 7
-  
+
   # Habilitar rotación automática
   replica {
     region = var.aws_region
@@ -86,9 +86,9 @@ resource "aws_iam_policy" "secrets_access" {
 
 # Configuración de rotación automática (opcional para producción)
 resource "aws_secretsmanager_secret_rotation" "rds_rotation" {
-  count           = var.environment == "prod" ? 1 : 0
-  secret_id       = aws_secretsmanager_secret.rds_credentials.id
-  rotation_lambda_arn = aws_lambda_function.rotation_lambda[0].arn
+  count               = var.environment == "prod" && var.enable_secret_rotation ? 1 : 0
+  secret_id           = aws_secretsmanager_secret.rds_credentials.id
+  rotation_lambda_arn = var.rotation_lambda_arn
 
   rotation_rules {
     automatically_after_days = 30

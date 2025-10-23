@@ -85,8 +85,45 @@ variable "allowed_countries" {
   default     = ["US", "CA", "MX", "BR", "AR", "CL", "CO", "PE", "EC", "VE", "UY", "PY", "BO", "GY", "SR", "GF"]
 }
 
+variable "api_domain_name" {
+  description = "Nombre de dominio personalizado para la API (solo prod)"
+  type        = string
+  default     = ""
+}
+
 variable "domain_name" {
   description = "Nombre de dominio para la aplicación (opcional)"
   type        = string
   default     = null
+}
+
+variable "api_certificate_arn" {
+  description = "ARN del certificado ACM para el dominio de la API (solo prod)"
+  type        = string
+  default     = ""
+}
+
+variable "jwt_audience" {
+  description = "Audiencia esperada para el JWT (opcional)"
+  type        = string
+  default     = ""
+}
+
+variable "jwt_issuer" {
+  description = "Issuer del JWT (opcional)"
+  type        = string
+  default     = ""
+}
+
+
+variable "enable_secret_rotation" {
+  description = "Habilitar rotación automática de Secrets Manager (solo prod)"
+  type        = bool
+  default     = false
+}
+
+variable "rotation_lambda_arn" {
+  description = "ARN de la Lambda que ejecuta la rotación de secretos (opcional)"
+  type        = string
+  default     = ""
 }

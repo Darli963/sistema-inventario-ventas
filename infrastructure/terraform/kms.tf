@@ -4,7 +4,7 @@
 resource "aws_kms_key" "data_key" {
   description         = "KMS Key para cifrado de datos sensibles"
   enable_key_rotation = true
-  
+
   # Política que permite a los servicios usar la clave
   policy = jsonencode({
     Version = "2012-10-17",
@@ -13,7 +13,7 @@ resource "aws_kms_key" "data_key" {
         Sid    = "Enable IAM User Permissions",
         Effect = "Allow",
         Principal = {
-          "AWS": "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+          "AWS" : "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
         },
         Action   = "kms:*",
         Resource = "*"
