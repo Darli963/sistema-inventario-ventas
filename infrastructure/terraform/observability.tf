@@ -23,6 +23,16 @@ locals {
     ] : [
     ["AWS/RDS", "CPUUtilization", "DBInstanceIdentifier", aws_db_instance.rds_primary.id]
   ]
+
+  # Métricas para Lambdas
+  lambda_error_metrics    = [for name in values(local.lambda_names) : ["AWS/Lambda", "Errors", "FunctionName", name]]
+  lambda_duration_metrics = [for name in values(local.lambda_names) : ["AWS/Lambda", "Duration", "FunctionName", name]]
+
+  # Métricas CloudFront
+  cloudfront_error_metrics = [
+    ["AWS/CloudFront", "4xxErrorRate", "DistributionId", aws_cloudfront_distribution.frontend_distribution.id, "Region", "Global"],
+    ["AWS/CloudFront", "5xxErrorRate", "DistributionId", aws_cloudfront_distribution.frontend_distribution.id, "Region", "Global"]
+  ]
 }
 
 # 1️⃣ CloudWatch Log Groups
@@ -117,6 +127,62 @@ resource "aws_cloudwatch_dashboard" "main_dashboard" {
           stat    = "Average"
           region  = var.aws_region
           title   = "RDS y ALB - Métricas principales"
+        }
+      },
+      {
+        type   = "metric"
+        x      = 12
+        y      = 0
+        width  = 12
+        height = 6
+        properties = {
+          metrics = local.lambda_error_metrics
+          period  = 300
+          stat    = "Sum"
+          region  = var.aws_region
+          title   = "Lambdas - Errors"
+        }
+      },
+      {
+        type   = "metric"
+        x      = 0
+        y      = 6
+        width  = 12
+        height = 6
+        properties = {
+          metrics = local.lambda_duration_metrics
+          period  = 300
+          stat    = "Average"
+          region  = var.aws_region
+          title   = "Lambdas - Duration"
+        }
+      },
+      {
+        type   = "metric"
+        x      = 12
+        y      = 6
+        width  = 12
+        height = 6
+        properties = {
+          metrics = [["Custom/ApiGateway", "Api5xxCount"]]
+          period  = 300
+          stat    = "Sum"
+          region  = var.aws_region
+          title   = "API Gateway - 5xx"
+        }
+      },
+      {
+        type   = "metric"
+        x      = 0
+        y      = 12
+        width  = 24
+        height = 6
+        properties = {
+          metrics = local.cloudfront_error_metrics
+          period  = 300
+          stat    = "Average"
+          region  = var.aws_region
+          title   = "CloudFront - 4xx/5xx Error Rate"
         }
       }
     ]

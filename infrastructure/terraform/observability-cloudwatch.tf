@@ -103,3 +103,28 @@ output "cloudfront_5xx_alarm_name" {
   description = "Nombre de la alarma de CloudFront 5xx"
   value       = aws_cloudwatch_metric_alarm.cloudfront_5xx_errors.alarm_name
 }
+
+# Log groups para RDS (error/general/slowquery) con retención y cifrado
+resource "aws_cloudwatch_log_group" "rds_error_logs" {
+  name              = "/aws/rds/instance/${aws_db_instance.rds_primary.id}/error"
+  retention_in_days = 30
+  kms_key_id        = aws_kms_key.kms_logs.arn
+
+  tags = merge(local.common_tags, { Name = "${local.prefix}-${var.environment}-rds-error-logs" })
+}
+
+resource "aws_cloudwatch_log_group" "rds_general_logs" {
+  name              = "/aws/rds/instance/${aws_db_instance.rds_primary.id}/general"
+  retention_in_days = 30
+  kms_key_id        = aws_kms_key.kms_logs.arn
+
+  tags = merge(local.common_tags, { Name = "${local.prefix}-${var.environment}-rds-general-logs" })
+}
+
+resource "aws_cloudwatch_log_group" "rds_slowquery_logs" {
+  name              = "/aws/rds/instance/${aws_db_instance.rds_primary.id}/slowquery"
+  retention_in_days = 30
+  kms_key_id        = aws_kms_key.kms_logs.arn
+
+  tags = merge(local.common_tags, { Name = "${local.prefix}-${var.environment}-rds-slowquery-logs" })
+}
