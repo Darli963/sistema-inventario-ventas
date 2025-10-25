@@ -58,7 +58,8 @@ resource "aws_iam_policy" "secrets_access" {
           "secretsmanager:DescribeSecret"
         ]
         Resource = [
-          aws_secretsmanager_secret.rds_credentials.arn
+          aws_secretsmanager_secret.rds_credentials.arn,
+          aws_db_instance.rds_primary.master_user_secret[0].secret_arn
         ]
       },
       {

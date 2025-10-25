@@ -216,3 +216,13 @@ resource "aws_iam_policy" "restricted_admin_policy" {
 
 # Obtener información de la cuenta actual
 data "aws_caller_identity" "current" {}
+
+resource "aws_iam_role_policy_attachment" "lambda_secrets_attach" {
+  role       = aws_iam_role.lambda_role.name
+  policy_arn = aws_iam_policy.secrets_access.arn
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_vpc_attach" {
+  role       = aws_iam_role.lambda_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+}

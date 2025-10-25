@@ -122,20 +122,114 @@ resource "aws_apigatewayv2_authorizer" "jwt_authorizer" {
 }
 
 # Integración de ejemplo para health check
-resource "aws_apigatewayv2_integration" "health_check" {
-  api_id             = aws_apigatewayv2_api.api_gateway.id
-  integration_type   = "HTTP_PROXY"
-  integration_method = "GET"
-  description        = "Health check endpoint"
-
-  integration_uri = "https://${var.domain_name != null && trimspace(var.domain_name) != "" ? var.domain_name : aws_cloudfront_distribution.frontend_distribution.domain_name}/health"
-
-  # Eliminar plantillas MOCK no soportadas por HTTP API
+# Integración Lambda para health
+resource "aws_apigatewayv2_integration" "health_lambda" {
+  api_id                 = aws_apigatewayv2_api.api_gateway.id
+  integration_type       = "AWS_PROXY"
+  integration_method     = "POST"
+  payload_format_version = "2.0"
+  description            = "Integración Lambda Health"
+  integration_uri        = aws_lambda_function.health_lambda.invoke_arn
 }
 
-# Ruta para health check
 resource "aws_apigatewayv2_route" "health_check" {
   api_id    = aws_apigatewayv2_api.api_gateway.id
   route_key = "GET /health"
-  target    = "integrations/${aws_apigatewayv2_integration.health_check.id}"
+  target    = "integrations/${aws_apigatewayv2_integration.health_lambda.id}"
+}
+
+# Integraciones Lambda (AWS_PROXY) para módulos
+resource "aws_apigatewayv2_integration" "productos_lambda" {
+  api_id                  = aws_apigatewayv2_api.api_gateway.id
+  integration_type        = "AWS_PROXY"
+  integration_method      = "POST"
+  payload_format_version  = "2.0"
+  description             = "Integración Lambda Productos"
+  integration_uri         = aws_lambda_function.productos_lambda.invoke_arn
+}
+
+resource "aws_apigatewayv2_integration" "inventario_lambda" {
+  api_id                  = aws_apigatewayv2_api.api_gateway.id
+  integration_type        = "AWS_PROXY"
+  integration_method      = "POST"
+  payload_format_version  = "2.0"
+  description             = "Integración Lambda Inventario"
+  integration_uri         = aws_lambda_function.inventario_lambda.invoke_arn
+}
+
+resource "aws_apigatewayv2_integration" "ventas_lambda" {
+  api_id                  = aws_apigatewayv2_api.api_gateway.id
+  integration_type        = "AWS_PROXY"
+  integration_method      = "POST"
+  payload_format_version  = "2.0"
+  description             = "Integración Lambda Ventas"
+  integration_uri         = aws_lambda_function.ventas_lambda.invoke_arn
+}
+
+resource "aws_apigatewayv2_integration" "reportes_lambda" {
+  api_id                  = aws_apigatewayv2_api.api_gateway.id
+  integration_type        = "AWS_PROXY"
+  integration_method      = "POST"
+  payload_format_version  = "2.0"
+  description             = "Integración Lambda Reportes"
+  integration_uri         = aws_lambda_function.reportes_lambda.invoke_arn
+}
+
+# Rutas y métodos por módulo
+# Productos
+resource "aws_apigatewayv2_route" "productos_get" {
+  api_id    = aws_apigatewayv2_api.api_gateway.id
+  route_key = "GET /productos"
+  target    = "integrations/${aws_apigatewayv2_integration.productos_lambda.id}"
+}
+resource "aws_apigatewayv2_route" "productos_post" {
+  api_id    = aws_apigatewayv2_api.api_gateway.id
+  route_key = "POST /productos"
+  target    = "integrations/${aws_apigatewayv2_integration.productos_lambda.id}"
+}
+resource "aws_apigatewayv2_route" "productos_put" {
+  api_id    = aws_apigatewayv2_api.api_gateway.id
+  route_key = "PUT /productos"
+  target    = "integrations/${aws_apigatewayv2_integration.productos_lambda.id}"
+}
+resource "aws_apigatewayv2_route" "productos_delete" {
+  api_id    = aws_apigatewayv2_api.api_gateway.id
+  route_key = "DELETE /productos"
+  target    = "integrations/${aws_apigatewayv2_integration.productos_lambda.id}"
+}
+
+# Inventario
+resource "aws_apigatewayv2_route" "inventario_get" {
+  api_id    = aws_apigatewayv2_api.api_gateway.id
+  route_key = "GET /inventario"
+  target    = "integrations/${aws_apigatewayv2_integration.inventario_lambda.id}"
+}
+resource "aws_apigatewayv2_route" "inventario_post" {
+  api_id    = aws_apigatewayv2_api.api_gateway.id
+  route_key = "POST /inventario"
+  target    = "integrations/${aws_apigatewayv2_integration.inventario_lambda.id}"
+}
+resource "aws_apigatewayv2_route" "inventario_put" {
+  api_id    = aws_apigatewayv2_api.api_gateway.id
+  route_key = "PUT /inventario"
+  target    = "integrations/${aws_apigatewayv2_integration.inventario_lambda.id}"
+}
+
+# Ventas
+resource "aws_apigatewayv2_route" "ventas_get" {
+  api_id    = aws_apigatewayv2_api.api_gateway.id
+  route_key = "GET /ventas"
+  target    = "integrations/${aws_apigatewayv2_integration.ventas_lambda.id}"
+}
+resource "aws_apigatewayv2_route" "ventas_post" {
+  api_id    = aws_apigatewayv2_api.api_gateway.id
+  route_key = "POST /ventas"
+  target    = "integrations/${aws_apigatewayv2_integration.ventas_lambda.id}"
+}
+
+# Reportes
+resource "aws_apigatewayv2_route" "reportes_get" {
+  api_id    = aws_apigatewayv2_api.api_gateway.id
+  route_key = "GET /reportes"
+  target    = "integrations/${aws_apigatewayv2_integration.reportes_lambda.id}"
 }
