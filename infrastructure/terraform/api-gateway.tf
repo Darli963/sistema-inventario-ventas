@@ -82,11 +82,11 @@ resource "aws_cloudwatch_log_group" "api_gateway_logs" {
 
 # Dominio personalizado (opcional para producción)
 resource "aws_apigatewayv2_domain_name" "api_domain" {
-  count       = local.api_domain_enabled ? 1 : 0
+  count       = var.environment == "prod" && var.api_domain_name != "" ? 1 : 0
   domain_name = var.api_domain_name
 
   domain_name_configuration {
-    certificate_arn = aws_acm_certificate.api_cert[0].arn
+    certificate_arn = var.api_certificate_arn
     endpoint_type   = "REGIONAL"
     security_policy = "TLS_1_2"
   }
@@ -101,24 +101,22 @@ resource "aws_apigatewayv2_domain_name" "api_domain" {
 
 # Mapeo del dominio al stage
 resource "aws_apigatewayv2_api_mapping" "api_mapping" {
-  count           = local.api_domain_enabled ? 1 : 0
-  api_id          = aws_apigatewayv2_api.api_gateway.id
-  domain_name     = aws_apigatewayv2_domain_name.api_domain[0].id
-  stage           = aws_apigatewayv2_stage.api_stage.id
-  api_mapping_key = "api"
+  count       = var.environment == "prod" && var.api_domain_name != "" ? 1 : 0
+  api_id      = aws_apigatewayv2_api.api_gateway.id
+  domain_name = aws_apigatewayv2_domain_name.api_domain[0].id
+  stage       = aws_apigatewayv2_stage.api_stage.id
 }
 
 # Autorización JWT (preparado para futuro uso)
 resource "aws_apigatewayv2_authorizer" "jwt_authorizer" {
-  count            = var.environment == "prod" ? 1 : 0
   api_id           = aws_apigatewayv2_api.api_gateway.id
   authorizer_type  = "JWT"
   identity_sources = ["$request.header.Authorization"]
   name             = "${local.prefix}-${var.environment}-jwt-authorizer"
 
   jwt_configuration {
-    audience = [var.jwt_audience]
-    issuer   = var.jwt_issuer
+    audience = [aws_cognito_user_pool_client.app_client.id]
+    issuer   = "https://cognito-idp.${var.aws_region}.amazonaws.com/${aws_cognito_user_pool.user_pool.id}"
   }
 }
 
@@ -179,58 +177,78 @@ resource "aws_apigatewayv2_integration" "reportes_lambda" {
 # Rutas y métodos por módulo
 # Productos
 resource "aws_apigatewayv2_route" "productos_get" {
-  api_id    = aws_apigatewayv2_api.api_gateway.id
-  route_key = "GET /productos"
-  target    = "integrations/${aws_apigatewayv2_integration.productos_lambda.id}"
+  api_id             = aws_apigatewayv2_api.api_gateway.id
+  route_key          = "GET /productos"
+  target             = "integrations/${aws_apigatewayv2_integration.productos_lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.jwt_authorizer.id
 }
 resource "aws_apigatewayv2_route" "productos_post" {
-  api_id    = aws_apigatewayv2_api.api_gateway.id
-  route_key = "POST /productos"
-  target    = "integrations/${aws_apigatewayv2_integration.productos_lambda.id}"
+  api_id             = aws_apigatewayv2_api.api_gateway.id
+  route_key          = "POST /productos"
+  target             = "integrations/${aws_apigatewayv2_integration.productos_lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.jwt_authorizer.id
 }
 resource "aws_apigatewayv2_route" "productos_put" {
-  api_id    = aws_apigatewayv2_api.api_gateway.id
-  route_key = "PUT /productos"
-  target    = "integrations/${aws_apigatewayv2_integration.productos_lambda.id}"
+  api_id             = aws_apigatewayv2_api.api_gateway.id
+  route_key          = "PUT /productos"
+  target             = "integrations/${aws_apigatewayv2_integration.productos_lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.jwt_authorizer.id
 }
 resource "aws_apigatewayv2_route" "productos_delete" {
-  api_id    = aws_apigatewayv2_api.api_gateway.id
-  route_key = "DELETE /productos"
-  target    = "integrations/${aws_apigatewayv2_integration.productos_lambda.id}"
+  api_id             = aws_apigatewayv2_api.api_gateway.id
+  route_key          = "DELETE /productos"
+  target             = "integrations/${aws_apigatewayv2_integration.productos_lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.jwt_authorizer.id
 }
 
 # Inventario
 resource "aws_apigatewayv2_route" "inventario_get" {
-  api_id    = aws_apigatewayv2_api.api_gateway.id
-  route_key = "GET /inventario"
-  target    = "integrations/${aws_apigatewayv2_integration.inventario_lambda.id}"
+  api_id             = aws_apigatewayv2_api.api_gateway.id
+  route_key          = "GET /inventario"
+  target             = "integrations/${aws_apigatewayv2_integration.inventario_lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.jwt_authorizer.id
 }
 resource "aws_apigatewayv2_route" "inventario_post" {
-  api_id    = aws_apigatewayv2_api.api_gateway.id
-  route_key = "POST /inventario"
-  target    = "integrations/${aws_apigatewayv2_integration.inventario_lambda.id}"
+  api_id             = aws_apigatewayv2_api.api_gateway.id
+  route_key          = "POST /inventario"
+  target             = "integrations/${aws_apigatewayv2_integration.inventario_lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.jwt_authorizer.id
 }
 resource "aws_apigatewayv2_route" "inventario_put" {
-  api_id    = aws_apigatewayv2_api.api_gateway.id
-  route_key = "PUT /inventario"
-  target    = "integrations/${aws_apigatewayv2_integration.inventario_lambda.id}"
+  api_id             = aws_apigatewayv2_api.api_gateway.id
+  route_key          = "PUT /inventario"
+  target             = "integrations/${aws_apigatewayv2_integration.inventario_lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.jwt_authorizer.id
 }
 
 # Ventas
 resource "aws_apigatewayv2_route" "ventas_get" {
-  api_id    = aws_apigatewayv2_api.api_gateway.id
-  route_key = "GET /ventas"
-  target    = "integrations/${aws_apigatewayv2_integration.ventas_lambda.id}"
+  api_id             = aws_apigatewayv2_api.api_gateway.id
+  route_key          = "GET /ventas"
+  target             = "integrations/${aws_apigatewayv2_integration.ventas_lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.jwt_authorizer.id
 }
 resource "aws_apigatewayv2_route" "ventas_post" {
-  api_id    = aws_apigatewayv2_api.api_gateway.id
-  route_key = "POST /ventas"
-  target    = "integrations/${aws_apigatewayv2_integration.ventas_lambda.id}"
+  api_id             = aws_apigatewayv2_api.api_gateway.id
+  route_key          = "POST /ventas"
+  target             = "integrations/${aws_apigatewayv2_integration.ventas_lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.jwt_authorizer.id
 }
 
 # Reportes
 resource "aws_apigatewayv2_route" "reportes_get" {
-  api_id    = aws_apigatewayv2_api.api_gateway.id
-  route_key = "GET /reportes"
-  target    = "integrations/${aws_apigatewayv2_integration.reportes_lambda.id}"
+  api_id             = aws_apigatewayv2_api.api_gateway.id
+  route_key          = "GET /reportes"
+  target             = "integrations/${aws_apigatewayv2_integration.reportes_lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.jwt_authorizer.id
 }

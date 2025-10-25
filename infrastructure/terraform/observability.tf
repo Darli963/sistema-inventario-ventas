@@ -42,6 +42,7 @@ resource "aws_cloudwatch_log_group" "lambda_logs" {
 
 # Log group para ALB (solo métrico; ALB access logs van a S3. Este grupo puede servir para aplicaciones relacionadas al ALB.)
 resource "aws_cloudwatch_log_group" "alb_logs" {
+  count             = var.alb_load_balancer_arn != "" ? 1 : 0
   name              = "/aws/elasticloadbalancing/${local.prefix}-${var.environment}"
   retention_in_days = 30
   kms_key_id        = aws_kms_key.data_key.arn
@@ -155,7 +156,7 @@ output "lambda_log_group_name" {
 
 output "alb_log_group_name" {
   description = "Log group base para ALB (para usos relacionados)"
-  value       = aws_cloudwatch_log_group.alb_logs.name
+  value       = length(aws_cloudwatch_log_group.alb_logs) > 0 ? aws_cloudwatch_log_group.alb_logs[0].name : ""
 }
 
 output "grafana_workspace_endpoint" {
