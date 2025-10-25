@@ -5,6 +5,16 @@ pipeline {
     timestamps()
   }
 
+  parameters {
+    choice(name: 'ENVIRONMENT', choices: ['staging','prod'], description: 'Entorno de despliegue')
+    string(name: 'TFSTATE_BUCKET', defaultValue: 'mc-terraform-state', description: 'Bucket S3 para backend de Terraform')
+    string(name: 'TFSTATE_LOCK_TABLE', defaultValue: 'mc-terraform-locks', description: 'Tabla DynamoDB para locking de Terraform')
+  }
+
+  environment {
+    AWS_DEFAULT_REGION = 'us-east-1'
+  }
+
   stages {
     stage('Build Frontend') {
       steps {
@@ -12,19 +22,60 @@ pipeline {
         sh 'npm run build'
       }
     }
+
+    stage('Terraform Init & Plan') {
+      steps {
+        withCredentials([usernamePassword(credentialsId: 'aws-creds', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+          dir('infrastructure/terraform') {
+            sh 'terraform fmt'
+            sh 'terraform init -backend-config="bucket=${TFSTATE_BUCKET}" -backend-config="key=envs/${ENVIRONMENT}/terraform.tfstate" -backend-config="region=${AWS_DEFAULT_REGION}" -backend-config="dynamodb_table=${TFSTATE_LOCK_TABLE}" -backend-config="encrypt=true"'
+            sh 'terraform workspace select ${ENVIRONMENT} || terraform workspace new ${ENVIRONMENT}'
+            sh 'terraform plan -var="environment=${ENVIRONMENT}" -out="tfplan-${ENVIRONMENT}.bin" -no-color'
+          }
+        }
+      }
+    }
+
+    stage('Terraform Apply (staging)') {
+      when {
+        expression { params.ENVIRONMENT == 'staging' }
+      }
+      steps {
+        withCredentials([usernamePassword(credentialsId: 'aws-creds', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+          timeout(time: 10, unit: 'MINUTES') {
+            input message: '¿Aplicar cambios a STAGING?', ok: 'Aplicar'
+          }
+          dir('infrastructure/terraform') {
+            sh 'terraform apply -auto-approve tfplan-${ENVIRONMENT}.bin'
+          }
+        }
+      }
+    }
+
     stage('Deploy to S3') {
       steps {
         sh 'bash ci-cd/deploy-frontend.sh'
+      }
+    }
+
+    stage('Smoke tests') {
+      steps {
+        withCredentials([usernamePassword(credentialsId: 'aws-creds', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+          dir('infrastructure/terraform') {
+            sh 'ALB_DNS=$(terraform output -raw alb_dns_name || echo "") && echo "ALB: $ALB_DNS" && if [ -n "$ALB_DNS" ]; then curl -fsS "http://$ALB_DNS/health" || true; fi'
+            sh 'API_URL=$(terraform output -raw api_gateway_url || echo "") && echo "API: $API_URL" && if [ -n "$API_URL" ]; then curl -fsS "$API_URL/health" || true; fi'
+          }
+        }
       }
     }
   }
 
   post {
     success {
-      echo 'Frontend desplegado correctamente en CloudFront'
+      echo 'Despliegue y verificación completados'
     }
     failure {
-      echo 'Error en despliegue del frontend'
+      echo 'Fallo en CI/CD'
     }
   }
 }

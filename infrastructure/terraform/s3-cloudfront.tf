@@ -195,25 +195,34 @@ resource "aws_s3_bucket_website_configuration" "frontend_website" {
 }
 
 
-# Identidad de acceso de origen de CloudFront (OAI)
-resource "aws_cloudfront_origin_access_identity" "oai" {
-  comment = "OAI for ${local.prefix}-${var.environment}-frontend"
+# Control de Acceso de Origen de CloudFront (OAC) para S3
+resource "aws_cloudfront_origin_access_control" "oac" {
+  name                              = "${local.prefix}-${var.environment}-oac"
+  description                       = "OAC for ${local.prefix}-${var.environment}-frontend"
+  origin_access_control_origin_type = "s3"
+  signing_behavior                  = "always"
+  signing_protocol                  = "sigv4"
 }
 
-# Política de acceso para el bucket frontend (permitir acceso solo a OAI)
+# Política de acceso para el bucket frontend (permitir acceso solo vía CloudFront con OAC)
 resource "aws_s3_bucket_policy" "frontend_policy" {
   bucket = aws_s3_bucket.frontend_bucket.id
   policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
       {
-        Sid    = "AllowCloudFrontOAIRead",
+        Sid    = "AllowCloudFrontOACRead",
         Effect = "Allow",
         Principal = {
-          CanonicalUser = aws_cloudfront_origin_access_identity.oai.s3_canonical_user_id
+          Service = "cloudfront.amazonaws.com"
         },
         Action   = ["s3:GetObject"],
-        Resource = "${aws_s3_bucket.frontend_bucket.arn}/*"
+        Resource = "${aws_s3_bucket.frontend_bucket.arn}/*",
+        Condition = {
+          StringEquals = {
+            "AWS:SourceArn" = aws_cloudfront_distribution.frontend_distribution.arn
+          }
+        }
       }
     ]
   })
@@ -222,11 +231,9 @@ resource "aws_s3_bucket_policy" "frontend_policy" {
 # CloudFront para distribución del frontend
 resource "aws_cloudfront_distribution" "frontend_distribution" {
   origin {
-    domain_name = aws_s3_bucket.frontend_bucket.bucket_regional_domain_name
-    origin_id   = "S3-${aws_s3_bucket.frontend_bucket.bucket}"
-    s3_origin_config {
-      origin_access_identity = aws_cloudfront_origin_access_identity.oai.cloudfront_access_identity_path
-    }
+    domain_name              = aws_s3_bucket.frontend_bucket.bucket_regional_domain_name
+    origin_id                = "S3-${aws_s3_bucket.frontend_bucket.bucket}"
+    origin_access_control_id = aws_cloudfront_origin_access_control.oac.id
   }
 
   # Origen adicional para API Gateway
@@ -341,13 +348,7 @@ resource "aws_cloudfront_distribution" "frontend_distribution" {
     target_origin_id = "API-Gateway"
     compress         = true
 
-    forwarded_values {
-      query_string = true
-      cookies {
-        forward = "all"
-      }
-      headers = ["Authorization", "Content-Type", "Accept", "Origin", "Referer", "User-Agent"]
-    }
+    origin_request_policy_id = aws_cloudfront_origin_request_policy.api_origin_request.id
 
     viewer_protocol_policy = "redirect-to-https"
     min_ttl                = 0
@@ -465,5 +466,26 @@ resource "aws_s3_bucket_lifecycle_configuration" "cloudfront_logs_lifecycle" {
     expiration {
       days = 365
     }
+  }
+}
+
+# Origin Request Policy para API (/api/*)
+resource "aws_cloudfront_origin_request_policy" "api_origin_request" {
+  name    = "${local.prefix}-${var.environment}-api-origin-request"
+  comment = "Policy for API Gateway via CloudFront (/api/*)"
+
+  headers_config {
+    header_behavior = "whitelist"
+    headers {
+      items = ["Authorization", "Content-Type", "Accept", "Origin", "Referer", "User-Agent"]
+    }
+  }
+
+  cookies_config {
+    cookie_behavior = "all"
+  }
+
+  query_strings_config {
+    query_string_behavior = "all"
   }
 }

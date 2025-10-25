@@ -1,0 +1,9 @@
+{
+  "name": "sistema-inventario-ventas",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "build": "rm -rf build && mkdir -p build && cp -r src/frontend/* build/",
+    "start": "python3 -m http.server 8000 -d src/frontend"
+  }
+}
