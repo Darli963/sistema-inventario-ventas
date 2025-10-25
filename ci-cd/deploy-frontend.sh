@@ -9,6 +9,7 @@ pushd "$(dirname "$0")" >/dev/null
 pushd ../infrastructure/terraform >/dev/null
 CLOUDFRONT_DISTRIBUTION_ID=$(terraform output -raw cloudfront_distribution_id)
 FRONTEND_BUCKET=$(terraform output -raw frontend_bucket_name)
+API_URL=$(terraform output -raw api_url || echo "")
 popd >/dev/null
 popd >/dev/null
 
@@ -20,6 +21,19 @@ if command -v npm >/dev/null 2>&1; then
 else
   echo "❌ npm no está instalado en el entorno. Instalalo o ejecuta esta script en un workspace con Node.js."
   exit 1
+fi
+
+# Inyectar configuración de API en el build si está disponible
+if [ -n "$API_URL" ]; then
+  cat > build/config.js <<EOF
+// Generado por CI/CD
+window.CONFIG = {
+  API_BASE_URL: '$API_URL'
+};
+EOF
+  echo "⚙️ API_BASE_URL inyectado en build/config.js: $API_URL"
+else
+  echo "⚠️ No se pudo obtener api_url de Terraform outputs; se usará localStorage o src/config.js"
 fi
 
 echo "☁️ Subiendo a S3: ${FRONTEND_BUCKET}"
