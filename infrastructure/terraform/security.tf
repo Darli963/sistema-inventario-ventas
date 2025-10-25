@@ -89,19 +89,55 @@ resource "aws_security_group" "rds_sg" {
 # 3️⃣ Security Group para Lambdas
 resource "aws_security_group" "lambda_sg" {
   name        = "${local.prefix}-${local.environment}-sg-lambda"
-  description = "Security Group para Lambdas"
+  description = "Security Group para Lambdas (endurecido)"
   vpc_id      = aws_vpc.main.id
 
-  # Permitir trafico entrante desde ALB
-  ingress {
-    description     = "Traffic from ALB"
-    from_port       = 0
-    to_port         = 0
-    protocol        = "-1"
-    security_groups = [aws_security_group.alb_sg.id]
+  # Sin reglas de ingreso: Lambdas no aceptan conexiones entrantes
+
+  # Egresos mínimos: HTTPS
+  egress {
+    description = "HTTPS hacia servicios AWS y endpoints"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Permitir todo el trafico saliente
+  # Egreso adicional: acceso a RDS dentro del VPC en puerto DB
+  egress {
+    description = "DB port hacia VPC"
+    from_port   = var.db_port
+    to_port     = var.db_port
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${local.prefix}-${local.environment}-sg-lambda"
+    }
+  )
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# SG dedicado para Interface Endpoints (permite 443 desde Lambdas)
+resource "aws_security_group" "vpc_endpoints_sg" {
+  name        = "${local.prefix}-${local.environment}-sg-vpce"
+  description = "Security Group para VPC Interface Endpoints"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description     = "HTTPS desde Lambdas"
+    from_port       = 443
+    to_port         = 443
+    protocol        = "tcp"
+    security_groups = [aws_security_group.lambda_sg.id]
+  }
+
   egress {
     description      = "All outbound traffic"
     from_port        = 0
@@ -114,7 +150,7 @@ resource "aws_security_group" "lambda_sg" {
   tags = merge(
     local.common_tags,
     {
-      Name = "${local.prefix}-${local.environment}-sg-lambda"
+      Name = "${local.prefix}-${local.environment}-sg-vpce"
     }
   )
 
