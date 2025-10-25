@@ -5,7 +5,7 @@
 resource "aws_cloudwatch_log_group" "cloudfront_logs" {
   name              = "/aws/${local.prefix}/${var.environment}/cloudfront"
   retention_in_days = 30
-  kms_key_id        = aws_kms_key.data_key.arn
+  kms_key_id        = aws_kms_key.kms_logs.arn
 
   tags = merge(local.common_tags, {
     Name = "${local.prefix}-${var.environment}-cloudfront-logs"
@@ -16,7 +16,7 @@ resource "aws_cloudwatch_log_group" "cloudfront_logs" {
 resource "aws_cloudwatch_log_group" "s3_logs" {
   name              = "/aws/${local.prefix}/${var.environment}/s3"
   retention_in_days = 30
-  kms_key_id        = aws_kms_key.data_key.arn
+  kms_key_id        = aws_kms_key.kms_logs.arn
 
   tags = merge(local.common_tags, {
     Name = "${local.prefix}-${var.environment}-s3-logs"
@@ -26,7 +26,7 @@ resource "aws_cloudwatch_log_group" "s3_logs" {
 # 2️⃣ Métricas y Alarmas (CloudFront 5xx Error Rate)
 resource "aws_sns_topic" "observability_alerts" {
   name              = "${local.prefix}-${var.environment}-observability-alerts"
-  kms_master_key_id = aws_kms_key.data_key.arn
+  kms_master_key_id = aws_kms_key.kms_logs.arn
 
   tags = merge(local.common_tags, {
     Name = "${local.prefix}-${var.environment}-observability-alerts"

@@ -70,7 +70,7 @@ resource "aws_apigatewayv2_stage" "api_stage" {
 resource "aws_cloudwatch_log_group" "api_gateway_logs" {
   name              = "/aws/apigateway/${local.prefix}-${var.environment}-api"
   retention_in_days = var.environment == "prod" ? 30 : 7
-  kms_key_id        = aws_kms_key.data_key.arn
+  kms_key_id        = aws_kms_key.kms_logs.arn
 
   tags = merge(
     local.common_tags,

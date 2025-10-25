@@ -67,6 +67,12 @@ variable "aws_account_id" {
 }
 
 # Variables para WAF y CloudFront
+variable "enable_shield_advanced" {
+  description = "Habilitar AWS Shield Advanced para proteger recursos (CloudFront, ALB)."
+  type        = bool
+  default     = false
+}
+
 variable "enable_geo_blocking" {
   description = "Habilitar bloqueo geográfico en WAF"
   type        = bool
@@ -115,11 +121,6 @@ variable "jwt_issuer" {
   default     = ""
 }
 
-variable "alb_certificate_arn" {
-  description = "ARN del certificado ACM para el ALB (HTTPS opcional)"
-  type        = string
-  default     = ""
-}
 
 variable "enable_secret_rotation" {
   description = "Habilitar rotación automática de Secrets Manager (solo prod)"
@@ -129,12 +130,6 @@ variable "enable_secret_rotation" {
 
 variable "rotation_lambda_arn" {
   description = "ARN de la Lambda que ejecuta la rotación de secretos (opcional)"
-  type        = string
-  default     = ""
-}
-
-variable "hosted_zone_name" {
-  description = "Nombre de la Hosted Zone de Route 53 (ej. dominio.com)"
   type        = string
   default     = ""
 }

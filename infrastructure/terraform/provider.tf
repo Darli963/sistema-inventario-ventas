@@ -1,8 +1,5 @@
+// Proveedor global para recursos con alcance global (CloudFront/Shield)
 provider "aws" {
-  region = var.aws_region
-}
-
-provider "aws" {
-  alias  = "us_east_1"
+  alias  = "global"
   region = "us-east-1"
 }

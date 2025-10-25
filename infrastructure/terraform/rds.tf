@@ -64,7 +64,7 @@ resource "aws_db_instance" "rds_primary" {
   max_allocated_storage = var.environment == "prod" ? 200 : 100
   storage_type          = "gp3"
   storage_encrypted     = true
-  kms_key_id            = aws_kms_key.data_key.arn
+  kms_key_id            = aws_kms_key.kms_rds.arn
 
   # Configuración de red y seguridad
   db_subnet_group_name   = aws_db_subnet_group.rds_subnets.name
@@ -73,7 +73,7 @@ resource "aws_db_instance" "rds_primary" {
 
   # Credenciales desde Secrets Manager
   manage_master_user_password   = true
-  master_user_secret_kms_key_id = aws_kms_key.data_key.arn
+  master_user_secret_kms_key_id = aws_kms_key.kms_rds.arn
   username                      = "admin"
   db_name                       = "inventario"
 
@@ -133,7 +133,7 @@ resource "aws_db_instance" "rds_replica" {
 
   # Configuración de almacenamiento (heredada de la principal)
   storage_encrypted = true
-  kms_key_id        = aws_kms_key.data_key.arn
+  kms_key_id        = aws_kms_key.kms_rds.arn
 
   # Configuración de monitoreo
   performance_insights_enabled          = true

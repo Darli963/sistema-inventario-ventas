@@ -14,6 +14,7 @@ resource "aws_secretsmanager_secret" "rds_credentials" {
   name                    = "${local.prefix}-${var.environment}-rds-credentials"
   description             = "Credenciales para la base de datos RDS principal"
   recovery_window_in_days = 7
+  kms_key_id              = aws_kms_key.kms_rds.arn
 
   # Habilitar rotación automática
 
@@ -68,7 +69,7 @@ resource "aws_iam_policy" "secrets_access" {
           "kms:Decrypt"
         ]
         Resource = [
-          aws_kms_key.data_key.arn
+          aws_kms_key.kms_rds.arn
         ]
         Condition = {
           StringEquals = {
@@ -83,14 +84,15 @@ resource "aws_iam_policy" "secrets_access" {
 }
 
 # Configuración de rotación automática (opcional para producción)
-resource "aws_secretsmanager_secret_rotation" "rds_rotation" {
-  count               = var.environment == "prod" && var.enable_secret_rotation ? 1 : 0
-  secret_id           = aws_secretsmanager_secret.rds_credentials.id
+# Rotación automática para el secreto administrado por RDS (master user)
+resource "aws_secretsmanager_secret_rotation" "rds_master_rotation" {
+  count               = var.environment == "prod" && var.enable_secret_rotation && var.rotation_lambda_arn != "" ? 1 : 0
+  secret_id           = aws_db_instance.rds_primary.master_user_secret[0].secret_arn
   rotation_lambda_arn = var.rotation_lambda_arn
 
   rotation_rules {
     automatically_after_days = 30
   }
 
-  depends_on = [aws_secretsmanager_secret_version.rds_credentials]
+  depends_on = [aws_db_instance.rds_primary]
 }

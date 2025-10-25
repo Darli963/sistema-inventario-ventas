@@ -427,7 +427,7 @@ resource "aws_sns_topic" "alerts" {
   count = var.environment == "prod" ? 1 : 0
   name  = "${local.prefix}-${var.environment}-security-alerts"
 
-  kms_master_key_id = aws_kms_key.data_key.arn
+  kms_master_key_id = aws_kms_key.kms_logs.arn
 
   tags = merge(
     local.common_tags,
@@ -439,7 +439,7 @@ resource "aws_sns_topic" "alerts" {
 resource "aws_cloudwatch_log_group" "waf_log_group" {
   name              = "/aws/wafv2/${local.prefix}-${var.environment}"
   retention_in_days = var.environment == "prod" ? 30 : 7
-  kms_key_id        = aws_kms_key.data_key.arn
+  kms_key_id        = aws_kms_key.kms_logs.arn
 
   tags = merge(
     local.common_tags,

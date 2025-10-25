@@ -22,26 +22,31 @@ data "archive_file" "backend_zip" {
 resource "aws_cloudwatch_log_group" "lambda_logs_productos" {
   name              = "/aws/lambda/${local.lambda_names.productos}"
   retention_in_days = var.environment == "prod" ? 30 : 7
+  kms_key_id        = aws_kms_key.kms_logs.arn
 }
 
 resource "aws_cloudwatch_log_group" "lambda_logs_inventario" {
   name              = "/aws/lambda/${local.lambda_names.inventario}"
   retention_in_days = var.environment == "prod" ? 30 : 7
+  kms_key_id        = aws_kms_key.kms_logs.arn
 }
 
 resource "aws_cloudwatch_log_group" "lambda_logs_ventas" {
   name              = "/aws/lambda/${local.lambda_names.ventas}"
   retention_in_days = var.environment == "prod" ? 30 : 7
+  kms_key_id        = aws_kms_key.kms_logs.arn
 }
 
 resource "aws_cloudwatch_log_group" "lambda_logs_reportes" {
   name              = "/aws/lambda/${local.lambda_names.reportes}"
   retention_in_days = var.environment == "prod" ? 30 : 7
+  kms_key_id        = aws_kms_key.kms_logs.arn
 }
 
 resource "aws_cloudwatch_log_group" "lambda_logs_health" {
   name              = "/aws/lambda/${local.lambda_names.health}"
   retention_in_days = var.environment == "prod" ? 30 : 7
+  kms_key_id        = aws_kms_key.kms_logs.arn
 }
 
 # Función Lambda: Productos
@@ -49,7 +54,7 @@ resource "aws_lambda_function" "productos_lambda" {
   function_name = local.lambda_names.productos
   description   = "CRUD de productos"
   runtime       = "nodejs18.x"
-  role          = aws_iam_role.lambda_role.arn
+  role          = aws_iam_role.lambda_role_productos.arn
   handler       = "lambdas/productos/handler.handler"
 
   filename         = data.archive_file.backend_zip.output_path
@@ -84,12 +89,12 @@ resource "aws_lambda_function" "productos_lambda" {
   tags = merge(local.common_tags, { Module = "productos" })
 
   depends_on = [
-    aws_iam_role_policy_attachment.lambda_basic_attach,
-    aws_iam_role_policy_attachment.lambda_s3_attach,
-    aws_iam_role_policy_attachment.lambda_rds_attach,
-    aws_iam_role_policy_attachment.lambda_cloudwatch_attach,
-    aws_iam_role_policy_attachment.lambda_secrets_attach,
-    aws_iam_role_policy_attachment.lambda_vpc_attach
+    aws_iam_role_policy_attachment.lambda_basic_attach_productos,
+    aws_iam_role_policy_attachment.lambda_vpc_attach_productos,
+    aws_iam_role_policy_attachment.lambda_secrets_attach_productos,
+    aws_iam_role_policy_attachment.lambda_s3_attach_productos,
+    aws_iam_role_policy_attachment.lambda_kms_s3_attach_productos,
+    aws_iam_role_policy_attachment.lambda_xray_attach_productos
   ]
 }
 
@@ -98,7 +103,7 @@ resource "aws_lambda_function" "inventario_lambda" {
   function_name = local.lambda_names.inventario
   description   = "Gestión de inventario"
   runtime       = "nodejs18.x"
-  role          = aws_iam_role.lambda_role.arn
+  role          = aws_iam_role.lambda_role_inventario.arn
   handler       = "lambdas/inventario/handler.handler"
 
   filename         = data.archive_file.backend_zip.output_path
@@ -133,12 +138,12 @@ resource "aws_lambda_function" "inventario_lambda" {
   tags = merge(local.common_tags, { Module = "inventario" })
 
   depends_on = [
-    aws_iam_role_policy_attachment.lambda_basic_attach,
-    aws_iam_role_policy_attachment.lambda_s3_attach,
-    aws_iam_role_policy_attachment.lambda_rds_attach,
-    aws_iam_role_policy_attachment.lambda_cloudwatch_attach,
-    aws_iam_role_policy_attachment.lambda_secrets_attach,
-    aws_iam_role_policy_attachment.lambda_vpc_attach
+    aws_iam_role_policy_attachment.lambda_basic_attach_inventario,
+    aws_iam_role_policy_attachment.lambda_vpc_attach_inventario,
+    aws_iam_role_policy_attachment.lambda_secrets_attach_inventario,
+    aws_iam_role_policy_attachment.lambda_s3_attach_inventario,
+    aws_iam_role_policy_attachment.lambda_kms_s3_attach_inventario,
+    aws_iam_role_policy_attachment.lambda_xray_attach_inventario
   ]
 }
 
@@ -147,7 +152,7 @@ resource "aws_lambda_function" "ventas_lambda" {
   function_name = local.lambda_names.ventas
   description   = "Registro de ventas"
   runtime       = "nodejs18.x"
-  role          = aws_iam_role.lambda_role.arn
+  role          = aws_iam_role.lambda_role_ventas.arn
   handler       = "lambdas/ventas/handler.handler"
 
   filename         = data.archive_file.backend_zip.output_path
@@ -182,12 +187,12 @@ resource "aws_lambda_function" "ventas_lambda" {
   tags = merge(local.common_tags, { Module = "ventas" })
 
   depends_on = [
-    aws_iam_role_policy_attachment.lambda_basic_attach,
-    aws_iam_role_policy_attachment.lambda_s3_attach,
-    aws_iam_role_policy_attachment.lambda_rds_attach,
-    aws_iam_role_policy_attachment.lambda_cloudwatch_attach,
-    aws_iam_role_policy_attachment.lambda_secrets_attach,
-    aws_iam_role_policy_attachment.lambda_vpc_attach
+    aws_iam_role_policy_attachment.lambda_basic_attach_ventas,
+    aws_iam_role_policy_attachment.lambda_vpc_attach_ventas,
+    aws_iam_role_policy_attachment.lambda_secrets_attach_ventas,
+    aws_iam_role_policy_attachment.lambda_s3_attach_ventas,
+    aws_iam_role_policy_attachment.lambda_kms_s3_attach_ventas,
+    aws_iam_role_policy_attachment.lambda_xray_attach_ventas
   ]
 }
 
@@ -196,7 +201,7 @@ resource "aws_lambda_function" "reportes_lambda" {
   function_name = local.lambda_names.reportes
   description   = "Consultas de reportes"
   runtime       = "nodejs18.x"
-  role          = aws_iam_role.lambda_role.arn
+  role          = aws_iam_role.lambda_role_reportes.arn
   handler       = "lambdas/reportes/handler.handler"
 
   filename         = data.archive_file.backend_zip.output_path
@@ -231,12 +236,12 @@ resource "aws_lambda_function" "reportes_lambda" {
   tags = merge(local.common_tags, { Module = "reportes" })
 
   depends_on = [
-    aws_iam_role_policy_attachment.lambda_basic_attach,
-    aws_iam_role_policy_attachment.lambda_s3_attach,
-    aws_iam_role_policy_attachment.lambda_rds_attach,
-    aws_iam_role_policy_attachment.lambda_cloudwatch_attach,
-    aws_iam_role_policy_attachment.lambda_secrets_attach,
-    aws_iam_role_policy_attachment.lambda_vpc_attach
+    aws_iam_role_policy_attachment.lambda_basic_attach_reportes,
+    aws_iam_role_policy_attachment.lambda_vpc_attach_reportes,
+    aws_iam_role_policy_attachment.lambda_secrets_attach_reportes,
+    aws_iam_role_policy_attachment.lambda_s3_attach_reportes,
+    aws_iam_role_policy_attachment.lambda_kms_s3_attach_reportes,
+    aws_iam_role_policy_attachment.lambda_xray_attach_reportes
   ]
 }
 
@@ -245,7 +250,7 @@ resource "aws_lambda_function" "health_lambda" {
   function_name = local.lambda_names.health
   description   = "Health check simple"
   runtime       = "nodejs18.x"
-  role          = aws_iam_role.lambda_role.arn
+  role          = aws_iam_role.lambda_role_health.arn
   handler       = "lambdas/health/handler.handler"
 
   filename         = data.archive_file.backend_zip.output_path
@@ -267,9 +272,8 @@ resource "aws_lambda_function" "health_lambda" {
   tags = merge(local.common_tags, { Module = "health" })
 
   depends_on = [
-    aws_iam_role_policy_attachment.lambda_basic_attach,
-    aws_iam_role_policy_attachment.lambda_cloudwatch_attach,
-    aws_iam_role_policy_attachment.lambda_xray_attach
+    aws_iam_role_policy_attachment.lambda_basic_attach_health,
+    aws_iam_role_policy_attachment.lambda_xray_attach_health
   ]
 }
 

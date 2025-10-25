@@ -30,7 +30,7 @@ locals {
 resource "aws_cloudwatch_log_group" "lambda_logs" {
   name              = "/aws/lambda/${local.prefix}-${var.environment}"
   retention_in_days = var.environment == "prod" ? 30 : 14
-  kms_key_id        = aws_kms_key.data_key.arn
+  kms_key_id        = aws_kms_key.kms_logs.arn
 
   tags = merge(
     local.common_tags,
@@ -45,7 +45,7 @@ resource "aws_cloudwatch_log_group" "alb_logs" {
   count             = var.alb_load_balancer_arn != "" ? 1 : 0
   name              = "/aws/elasticloadbalancing/${local.prefix}-${var.environment}"
   retention_in_days = 30
-  kms_key_id        = aws_kms_key.data_key.arn
+  kms_key_id        = aws_kms_key.kms_logs.arn
 
   tags = merge(
     local.common_tags,

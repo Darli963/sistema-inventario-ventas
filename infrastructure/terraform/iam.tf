@@ -232,3 +232,245 @@ resource "aws_iam_role_policy_attachment" "lambda_xray_attach" {
   role       = aws_iam_role.lambda_role.name
   policy_arn = "arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess"
 }
+
+# Política S3 limitada al bucket privado
+resource "aws_iam_policy" "lambda_s3_private_policy" {
+  name        = "${local.prefix}-${local.environment}-lambda-s3-private-policy"
+  description = "Acceso restringido al bucket S3 privado"
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject"
+        ],
+        Resource = [
+          "${aws_s3_bucket.private_bucket.arn}/*"
+        ]
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "s3:ListBucket"
+        ],
+        Resource = [
+          aws_s3_bucket.private_bucket.arn
+        ]
+      }
+    ]
+  })
+
+  tags = local.common_tags
+}
+
+# Política KMS para usar la clave del bucket privado
+resource "aws_iam_policy" "lambda_kms_s3_policy" {
+  name        = "${local.prefix}-${local.environment}-lambda-kms-s3-policy"
+  description = "Permisos KMS para cifrado en S3 privado"
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "kms:Encrypt",
+          "kms:Decrypt",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*",
+          "kms:DescribeKey"
+        ],
+        Resource = [
+          aws_kms_key.kms_s3_private.arn
+        ]
+      }
+    ]
+  })
+
+  tags = local.common_tags
+}
+
+# Roles mínimos por función Lambda
+resource "aws_iam_role" "lambda_role_productos" {
+  name        = "${local.prefix}-${local.environment}-lambda-role-productos"
+  description = "Rol mínimo para Lambda productos"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Action    = "sts:AssumeRole",
+      Effect    = "Allow",
+      Principal = { Service = "lambda.amazonaws.com" }
+    }]
+  })
+  tags = merge(local.common_tags, { Name = "${local.prefix}-${local.environment}-lambda-role-productos" })
+}
+
+resource "aws_iam_role" "lambda_role_inventario" {
+  name        = "${local.prefix}-${local.environment}-lambda-role-inventario"
+  description = "Rol mínimo para Lambda inventario"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Action    = "sts:AssumeRole",
+      Effect    = "Allow",
+      Principal = { Service = "lambda.amazonaws.com" }
+    }]
+  })
+  tags = merge(local.common_tags, { Name = "${local.prefix}-${local.environment}-lambda-role-inventario" })
+}
+
+resource "aws_iam_role" "lambda_role_ventas" {
+  name        = "${local.prefix}-${local.environment}-lambda-role-ventas"
+  description = "Rol mínimo para Lambda ventas"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Action    = "sts:AssumeRole",
+      Effect    = "Allow",
+      Principal = { Service = "lambda.amazonaws.com" }
+    }]
+  })
+  tags = merge(local.common_tags, { Name = "${local.prefix}-${local.environment}-lambda-role-ventas" })
+}
+
+resource "aws_iam_role" "lambda_role_reportes" {
+  name        = "${local.prefix}-${local.environment}-lambda-role-reportes"
+  description = "Rol mínimo para Lambda reportes"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Action    = "sts:AssumeRole",
+      Effect    = "Allow",
+      Principal = { Service = "lambda.amazonaws.com" }
+    }]
+  })
+  tags = merge(local.common_tags, { Name = "${local.prefix}-${local.environment}-lambda-role-reportes" })
+}
+
+resource "aws_iam_role" "lambda_role_health" {
+  name        = "${local.prefix}-${local.environment}-lambda-role-health"
+  description = "Rol mínimo para Lambda health"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Action    = "sts:AssumeRole",
+      Effect    = "Allow",
+      Principal = { Service = "lambda.amazonaws.com" }
+    }]
+  })
+  tags = merge(local.common_tags, { Name = "${local.prefix}-${local.environment}-lambda-role-health" })
+}
+
+# Adjuntos por función: básicos, VPC (según aplique), Secrets, S3 y KMS S3, X-Ray
+resource "aws_iam_role_policy_attachment" "lambda_basic_attach_productos" {
+  role       = aws_iam_role.lambda_role_productos.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+resource "aws_iam_role_policy_attachment" "lambda_vpc_attach_productos" {
+  role       = aws_iam_role.lambda_role_productos.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+}
+resource "aws_iam_role_policy_attachment" "lambda_secrets_attach_productos" {
+  role       = aws_iam_role.lambda_role_productos.name
+  policy_arn = aws_iam_policy.secrets_access.arn
+}
+resource "aws_iam_role_policy_attachment" "lambda_s3_attach_productos" {
+  role       = aws_iam_role.lambda_role_productos.name
+  policy_arn = aws_iam_policy.lambda_s3_private_policy.arn
+}
+resource "aws_iam_role_policy_attachment" "lambda_kms_s3_attach_productos" {
+  role       = aws_iam_role.lambda_role_productos.name
+  policy_arn = aws_iam_policy.lambda_kms_s3_policy.arn
+}
+resource "aws_iam_role_policy_attachment" "lambda_xray_attach_productos" {
+  role       = aws_iam_role.lambda_role_productos.name
+  policy_arn = "arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess"
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_basic_attach_inventario" {
+  role       = aws_iam_role.lambda_role_inventario.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+resource "aws_iam_role_policy_attachment" "lambda_vpc_attach_inventario" {
+  role       = aws_iam_role.lambda_role_inventario.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+}
+resource "aws_iam_role_policy_attachment" "lambda_secrets_attach_inventario" {
+  role       = aws_iam_role.lambda_role_inventario.name
+  policy_arn = aws_iam_policy.secrets_access.arn
+}
+resource "aws_iam_role_policy_attachment" "lambda_s3_attach_inventario" {
+  role       = aws_iam_role.lambda_role_inventario.name
+  policy_arn = aws_iam_policy.lambda_s3_private_policy.arn
+}
+resource "aws_iam_role_policy_attachment" "lambda_kms_s3_attach_inventario" {
+  role       = aws_iam_role.lambda_role_inventario.name
+  policy_arn = aws_iam_policy.lambda_kms_s3_policy.arn
+}
+resource "aws_iam_role_policy_attachment" "lambda_xray_attach_inventario" {
+  role       = aws_iam_role.lambda_role_inventario.name
+  policy_arn = "arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess"
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_basic_attach_ventas" {
+  role       = aws_iam_role.lambda_role_ventas.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+resource "aws_iam_role_policy_attachment" "lambda_vpc_attach_ventas" {
+  role       = aws_iam_role.lambda_role_ventas.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+}
+resource "aws_iam_role_policy_attachment" "lambda_secrets_attach_ventas" {
+  role       = aws_iam_role.lambda_role_ventas.name
+  policy_arn = aws_iam_policy.secrets_access.arn
+}
+resource "aws_iam_role_policy_attachment" "lambda_s3_attach_ventas" {
+  role       = aws_iam_role.lambda_role_ventas.name
+  policy_arn = aws_iam_policy.lambda_s3_private_policy.arn
+}
+resource "aws_iam_role_policy_attachment" "lambda_kms_s3_attach_ventas" {
+  role       = aws_iam_role.lambda_role_ventas.name
+  policy_arn = aws_iam_policy.lambda_kms_s3_policy.arn
+}
+resource "aws_iam_role_policy_attachment" "lambda_xray_attach_ventas" {
+  role       = aws_iam_role.lambda_role_ventas.name
+  policy_arn = "arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess"
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_basic_attach_reportes" {
+  role       = aws_iam_role.lambda_role_reportes.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+resource "aws_iam_role_policy_attachment" "lambda_vpc_attach_reportes" {
+  role       = aws_iam_role.lambda_role_reportes.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+}
+resource "aws_iam_role_policy_attachment" "lambda_secrets_attach_reportes" {
+  role       = aws_iam_role.lambda_role_reportes.name
+  policy_arn = aws_iam_policy.secrets_access.arn
+}
+resource "aws_iam_role_policy_attachment" "lambda_s3_attach_reportes" {
+  role       = aws_iam_role.lambda_role_reportes.name
+  policy_arn = aws_iam_policy.lambda_s3_private_policy.arn
+}
+resource "aws_iam_role_policy_attachment" "lambda_kms_s3_attach_reportes" {
+  role       = aws_iam_role.lambda_role_reportes.name
+  policy_arn = aws_iam_policy.lambda_kms_s3_policy.arn
+}
+resource "aws_iam_role_policy_attachment" "lambda_xray_attach_reportes" {
+  role       = aws_iam_role.lambda_role_reportes.name
+  policy_arn = "arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess"
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_basic_attach_health" {
+  role       = aws_iam_role.lambda_role_health.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+resource "aws_iam_role_policy_attachment" "lambda_xray_attach_health" {
+  role       = aws_iam_role.lambda_role_health.name
+  policy_arn = "arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess"
+}
