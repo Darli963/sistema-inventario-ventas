@@ -98,7 +98,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "private_lifecycle" {
     }
 
     noncurrent_version_expiration {
-      noncurrent_days = var.environment == "prod" ? 2555 : 120 # 7 años en prod, 120 días en dev (mayor que 90)
+      noncurrent_days = var.environment == "prod" ? 2555 : 90 # 7 años en prod, 90 días en dev
     }
 
     # Eliminar uploads incompletos después de 7 días
@@ -247,7 +247,6 @@ resource "aws_cloudfront_distribution" "frontend_distribution" {
   default_root_object = "index.html"
   price_class         = var.environment == "prod" ? "PriceClass_All" : "PriceClass_100"
   http_version        = "http2and3"
-  web_acl_id          = aws_wafv2_web_acl.frontend_waf.arn
 
   # Configuración de cache optimizada
   default_cache_behavior {

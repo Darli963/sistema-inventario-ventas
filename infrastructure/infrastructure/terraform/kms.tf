@@ -47,21 +47,6 @@ resource "aws_kms_key" "data_key" {
           "kms:DescribeKey"
         ],
         Resource = "*"
-      },
-      {
-        Sid    = "Allow CloudWatch Logs Service",
-        Effect = "Allow",
-        Principal = {
-          Service = "logs.${var.aws_region}.amazonaws.com"
-        },
-        Action = [
-          "kms:Encrypt",
-          "kms:Decrypt",
-          "kms:ReEncrypt*",
-          "kms:GenerateDataKey*",
-          "kms:DescribeKey"
-        ],
-        Resource = "*"
       }
     ]
   })
@@ -74,7 +59,7 @@ resource "aws_kms_key" "data_key" {
   )
 }
 
-
+# Alias para facilitar la referencia a la clave KMS
 resource "aws_kms_alias" "data_key_alias" {
   name          = "alias/${local.prefix}-${var.environment}-data-key"
   target_key_id = aws_kms_key.data_key.id

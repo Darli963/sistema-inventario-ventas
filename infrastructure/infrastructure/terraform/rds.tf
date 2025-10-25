@@ -56,7 +56,7 @@ resource "aws_db_parameter_group" "mysql_params" {
 resource "aws_db_instance" "rds_primary" {
   identifier     = "${local.prefix}-${var.environment}-rds-primary"
   engine         = "mysql"
-  engine_version = "8.0.43" # Versión soportada por RDS (MySQL 8.0)
+  engine_version = "8.0.35" # Versión específica LTS
   instance_class = var.environment == "prod" ? "db.t3.small" : "db.t3.micro"
 
   # Configuración de almacenamiento

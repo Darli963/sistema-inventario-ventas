@@ -2,6 +2,10 @@
 # Información importante para el despliegue y monitoreo
 
 # CloudFront Distribution
+output "cloudfront_distribution_id" {
+  description = "ID de la distribución de CloudFront"
+  value       = aws_cloudfront_distribution.frontend_distribution.id
+}
 
 output "cloudfront_distribution_arn" {
   description = "ARN de la distribución de CloudFront"
@@ -84,6 +88,10 @@ output "security_alerts_topic_arn" {
 }
 
 # URLs importantes
+output "frontend_url" {
+  description = "URL del frontend a través de CloudFront"
+  value       = "https://${aws_cloudfront_distribution.frontend_distribution.domain_name}"
+}
 
 output "api_url" {
   description = "URL de la API a través de CloudFront"

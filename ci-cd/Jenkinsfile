@@ -1,0 +1,30 @@
+pipeline {
+  agent any
+
+  options {
+    timestamps()
+  }
+
+  stages {
+    stage('Build Frontend') {
+      steps {
+        sh 'npm ci'
+        sh 'npm run build'
+      }
+    }
+    stage('Deploy to S3') {
+      steps {
+        sh 'bash ci-cd/deploy-frontend.sh'
+      }
+    }
+  }
+
+  post {
+    success {
+      echo 'Frontend desplegado correctamente en CloudFront'
+    }
+    failure {
+      echo 'Error en despliegue del frontend'
+    }
+  }
+}

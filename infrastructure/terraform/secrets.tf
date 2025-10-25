@@ -16,9 +16,6 @@ resource "aws_secretsmanager_secret" "rds_credentials" {
   recovery_window_in_days = 7
 
   # Habilitar rotación automática
-  replica {
-    region = var.aws_region
-  }
 
   tags = merge(
     local.common_tags,

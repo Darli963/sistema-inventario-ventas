@@ -245,152 +245,53 @@ resource "aws_wafv2_web_acl" "frontend_waf" {
   )
 }
 
-
-# S3 bucket para logs de WAF (destino de Firehose)
-resource "aws_s3_bucket" "waf_logs" {
-  bucket = "${local.prefix}-${var.environment}-waf-logs-${random_id.bucket_suffix.hex}"
-  tags   = merge(local.common_tags, { Name = "${local.prefix}-${var.environment}-waf-logs", Type = "Logs" })
+# Asociar WAF con CloudFront Distribution
+resource "aws_wafv2_web_acl_association" "frontend_waf_association" {
+  resource_arn = aws_cloudfront_distribution.frontend_distribution.arn
+  web_acl_arn  = aws_wafv2_web_acl.frontend_waf.arn
 }
 
-resource "aws_s3_bucket_ownership_controls" "waf_logs_ownership" {
-  bucket = aws_s3_bucket.waf_logs.id
-  rule {
-    object_ownership = "BucketOwnerPreferred"
-  }
-}
+# CloudWatch Log Group para WAF
+resource "aws_cloudwatch_log_group" "waf_log_group" {
+  name              = "/aws/wafv2/${local.prefix}-${var.environment}"
+  retention_in_days = var.environment == "prod" ? 30 : 7
+  kms_key_id        = aws_kms_key.data_key.arn
 
-resource "aws_s3_bucket_public_access_block" "waf_logs_block" {
-  bucket                  = aws_s3_bucket.waf_logs.id
-  block_public_acls       = true
-  block_public_policy     = true
-  ignore_public_acls      = true
-  restrict_public_buckets = true
-}
-
-resource "aws_s3_bucket_server_side_encryption_configuration" "waf_logs_sse" {
-  bucket = aws_s3_bucket.waf_logs.id
-  rule {
-    apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${local.prefix}-${var.environment}-waf-logs"
     }
-    bucket_key_enabled = true
-  }
+  )
 }
 
-resource "aws_s3_bucket_lifecycle_configuration" "waf_logs_lifecycle" {
-  bucket = aws_s3_bucket.waf_logs.id
-  rule {
-    id     = "waf_logs_lifecycle"
-    status = "Enabled"
-    filter {
-      prefix = ""
-    }
-    transition {
-      days          = 30
-      storage_class = "STANDARD_IA"
-    }
-    transition {
-      days          = 90
-      storage_class = "GLACIER"
-    }
-    expiration {
-      days = 365
-    }
-  }
-}
-
-# IAM Role para Firehose
-resource "aws_iam_role" "waf_firehose_role" {
-  name = "${local.prefix}-${var.environment}-waf-firehose-role"
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [{
-      Effect    = "Allow",
-      Principal = { Service = "firehose.amazonaws.com" },
-      Action    = "sts:AssumeRole"
-    }]
-  })
-  tags = local.common_tags
-}
-
-resource "aws_iam_role_policy" "waf_firehose_policy" {
-  name = "${local.prefix}-${var.environment}-waf-firehose-policy"
-  role = aws_iam_role.waf_firehose_role.id
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect = "Allow",
-        Action = [
-          "s3:AbortMultipartUpload",
-          "s3:GetBucketLocation",
-          "s3:GetObject",
-          "s3:ListBucket",
-          "s3:ListBucketMultipartUploads",
-          "s3:PutObject"
-        ],
-        Resource = [
-          aws_s3_bucket.waf_logs.arn,
-          "${aws_s3_bucket.waf_logs.arn}/*"
-        ]
-      },
-      {
-        Effect = "Allow",
-        Action = [
-          "logs:CreateLogGroup",
-          "logs:CreateLogStream",
-          "logs:PutLogEvents",
-          "logs:DescribeLogStreams"
-        ],
-        Resource = "*"
-      }
-    ]
-  })
-}
-
-# Kinesis Firehose Delivery Stream para WAF logs
-resource "aws_kinesis_firehose_delivery_stream" "waf_logs_stream" {
-  name        = "aws-waf-logs-${local.prefix}-${var.environment}"
-  destination = "extended_s3"
-
-  extended_s3_configuration {
-    role_arn            = aws_iam_role.waf_firehose_role.arn
-    bucket_arn          = aws_s3_bucket.waf_logs.arn
-    buffering_interval  = 300
-    buffering_size      = 5
-    compression_format  = "GZIP"
-    prefix              = "waf/"
-    error_output_prefix = "waf-errors/"
-  }
-
-  tags = merge(local.common_tags, { Name = "aws-waf-logs-${local.prefix}-${var.environment}" })
-}
-
-# Configuración de logging para WAF usando Firehose
+# Configuración de logging para WAF
 resource "aws_wafv2_web_acl_logging_configuration" "waf_logging" {
   resource_arn            = aws_wafv2_web_acl.frontend_waf.arn
-  log_destination_configs = [aws_kinesis_firehose_delivery_stream.waf_logs_stream.arn]
+  log_destination_configs = [aws_cloudwatch_log_group.waf_log_group.arn]
 
+  # Filtros de logging
   logging_filter {
     default_behavior = "KEEP"
 
     filter {
-      behavior    = "DROP"
-      requirement = "MEETS_ALL"
-
+      behavior = "DROP"
       condition {
         action_condition {
           action = "ALLOW"
         }
       }
+      requirement = "MEETS_ALL"
     }
   }
 
+  # Campos redactados por privacidad
   redacted_fields {
     single_header {
       name = "authorization"
     }
   }
+
   redacted_fields {
     single_header {
       name = "cookie"
@@ -433,18 +334,6 @@ resource "aws_sns_topic" "alerts" {
     local.common_tags,
     {
       Name = "${local.prefix}-${var.environment}-alerts"
-    }
-  )
-}
-resource "aws_cloudwatch_log_group" "waf_log_group" {
-  name              = "/aws/wafv2/${local.prefix}-${var.environment}"
-  retention_in_days = var.environment == "prod" ? 30 : 7
-  kms_key_id        = aws_kms_key.data_key.arn
-
-  tags = merge(
-    local.common_tags,
-    {
-      Name = "${local.prefix}-${var.environment}-waf-logs"
     }
   )
 }

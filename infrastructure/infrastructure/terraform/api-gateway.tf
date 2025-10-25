@@ -40,15 +40,17 @@ resource "aws_apigatewayv2_stage" "api_stage" {
   access_log_settings {
     destination_arn = aws_cloudwatch_log_group.api_gateway_logs.arn
     format = jsonencode({
-      requestId      = "$context.requestId"
-      ip             = "$context.identity.sourceIp"
-      requestTime    = "$context.requestTime"
-      httpMethod     = "$context.httpMethod"
-      routeKey       = "$context.routeKey"
-      status         = "$context.status"
-      protocol       = "$context.protocol"
-      responseLength = "$context.responseLength"
-      error          = "$context.error.message"
+      requestId        = "$context.requestId"
+      ip               = "$context.identity.sourceIp"
+      requestTime      = "$context.requestTime"
+      httpMethod       = "$context.httpMethod"
+      routeKey         = "$context.routeKey"
+      status           = "$context.status"
+      protocol         = "$context.protocol"
+      responseLength   = "$context.responseLength"
+      responseTime     = "$context.responseTime"
+      error            = "$context.error.message"
+      integrationError = "$context.integration.error"
     })
   }
 
@@ -123,14 +125,17 @@ resource "aws_apigatewayv2_authorizer" "jwt_authorizer" {
 
 # Integración de ejemplo para health check
 resource "aws_apigatewayv2_integration" "health_check" {
-  api_id             = aws_apigatewayv2_api.api_gateway.id
-  integration_type   = "HTTP_PROXY"
-  integration_method = "GET"
-  description        = "Health check endpoint"
+  api_id           = aws_apigatewayv2_api.api_gateway.id
+  integration_type = "MOCK"
+  description      = "Health check endpoint"
 
-  integration_uri = "https://${var.domain_name != null && trimspace(var.domain_name) != "" ? var.domain_name : aws_cloudfront_distribution.frontend_distribution.domain_name}/health"
+  request_templates = {
+    "application/json" = jsonencode({
+      statusCode = 200
+    })
+  }
 
-  # Eliminar plantillas MOCK no soportadas por HTTP API
+  template_selection_expression = "200"
 }
 
 # Ruta para health check
@@ -138,4 +143,26 @@ resource "aws_apigatewayv2_route" "health_check" {
   api_id    = aws_apigatewayv2_api.api_gateway.id
   route_key = "GET /health"
   target    = "integrations/${aws_apigatewayv2_integration.health_check.id}"
+}
+
+# Response para health check
+resource "aws_apigatewayv2_integration_response" "health_check" {
+  api_id                   = aws_apigatewayv2_api.api_gateway.id
+  integration_id           = aws_apigatewayv2_integration.health_check.id
+  integration_response_key = "/200/"
+
+  response_templates = {
+    "application/json" = jsonencode({
+      status    = "healthy"
+      timestamp = "$context.requestTime"
+      version   = "1.0"
+    })
+  }
+}
+
+# Route response para health check
+resource "aws_apigatewayv2_route_response" "health_check" {
+  api_id             = aws_apigatewayv2_api.api_gateway.id
+  route_id           = aws_apigatewayv2_route.health_check.id
+  route_response_key = "$default"
 }
