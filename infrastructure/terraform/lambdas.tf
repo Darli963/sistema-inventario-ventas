@@ -64,7 +64,7 @@ resource "aws_lambda_function" "productos_lambda" {
   environment {
     variables = {
       DB_SECRET_ARN     = aws_db_instance.rds_primary.master_user_secret[0].secret_arn
-      DB_HOST           = aws_db_instance.rds_primary.address
+      DB_HOST           = aws_db_proxy.db_proxy.endpoint
       DB_PORT           = aws_db_instance.rds_primary.port
       DB_NAME           = aws_db_instance.rds_primary.db_name
       S3_PRIVATE_BUCKET = aws_s3_bucket.private_bucket.bucket
@@ -75,6 +75,10 @@ resource "aws_lambda_function" "productos_lambda" {
   vpc_config {
     subnet_ids         = aws_subnet.private[*].id
     security_group_ids = [aws_security_group.lambda_sg.id]
+  }
+
+  tracing_config {
+    mode = "Active"
   }
 
   tags = merge(local.common_tags, { Module = "productos" })
@@ -109,7 +113,7 @@ resource "aws_lambda_function" "inventario_lambda" {
   environment {
     variables = {
       DB_SECRET_ARN     = aws_db_instance.rds_primary.master_user_secret[0].secret_arn
-      DB_HOST           = aws_db_instance.rds_primary.address
+      DB_HOST           = aws_db_proxy.db_proxy.endpoint
       DB_PORT           = aws_db_instance.rds_primary.port
       DB_NAME           = aws_db_instance.rds_primary.db_name
       S3_PRIVATE_BUCKET = aws_s3_bucket.private_bucket.bucket
@@ -120,6 +124,10 @@ resource "aws_lambda_function" "inventario_lambda" {
   vpc_config {
     subnet_ids         = aws_subnet.private[*].id
     security_group_ids = [aws_security_group.lambda_sg.id]
+  }
+
+  tracing_config {
+    mode = "Active"
   }
 
   tags = merge(local.common_tags, { Module = "inventario" })
@@ -154,7 +162,7 @@ resource "aws_lambda_function" "ventas_lambda" {
   environment {
     variables = {
       DB_SECRET_ARN     = aws_db_instance.rds_primary.master_user_secret[0].secret_arn
-      DB_HOST           = aws_db_instance.rds_primary.address
+      DB_HOST           = aws_db_proxy.db_proxy.endpoint
       DB_PORT           = aws_db_instance.rds_primary.port
       DB_NAME           = aws_db_instance.rds_primary.db_name
       S3_PRIVATE_BUCKET = aws_s3_bucket.private_bucket.bucket
@@ -165,6 +173,10 @@ resource "aws_lambda_function" "ventas_lambda" {
   vpc_config {
     subnet_ids         = aws_subnet.private[*].id
     security_group_ids = [aws_security_group.lambda_sg.id]
+  }
+
+  tracing_config {
+    mode = "Active"
   }
 
   tags = merge(local.common_tags, { Module = "ventas" })
@@ -199,7 +211,7 @@ resource "aws_lambda_function" "reportes_lambda" {
   environment {
     variables = {
       DB_SECRET_ARN     = aws_db_instance.rds_primary.master_user_secret[0].secret_arn
-      DB_HOST           = aws_db_instance.rds_primary.address
+      DB_HOST           = aws_db_proxy.db_proxy.endpoint
       DB_PORT           = aws_db_instance.rds_primary.port
       DB_NAME           = aws_db_instance.rds_primary.db_name
       S3_PRIVATE_BUCKET = aws_s3_bucket.private_bucket.bucket
@@ -210,6 +222,10 @@ resource "aws_lambda_function" "reportes_lambda" {
   vpc_config {
     subnet_ids         = aws_subnet.private[*].id
     security_group_ids = [aws_security_group.lambda_sg.id]
+  }
+
+  tracing_config {
+    mode = "Active"
   }
 
   tags = merge(local.common_tags, { Module = "reportes" })
@@ -244,11 +260,16 @@ resource "aws_lambda_function" "health_lambda" {
     }
   }
 
+  tracing_config {
+    mode = "Active"
+  }
+
   tags = merge(local.common_tags, { Module = "health" })
 
   depends_on = [
     aws_iam_role_policy_attachment.lambda_basic_attach,
-    aws_iam_role_policy_attachment.lambda_cloudwatch_attach
+    aws_iam_role_policy_attachment.lambda_cloudwatch_attach,
+    aws_iam_role_policy_attachment.lambda_xray_attach
   ]
 }
 

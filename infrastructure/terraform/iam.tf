@@ -226,3 +226,9 @@ resource "aws_iam_role_policy_attachment" "lambda_vpc_attach" {
   role       = aws_iam_role.lambda_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
+
+# Adjuntar política de escritura en X-Ray al rol de Lambda
+resource "aws_iam_role_policy_attachment" "lambda_xray_attach" {
+  role       = aws_iam_role.lambda_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess"
+}

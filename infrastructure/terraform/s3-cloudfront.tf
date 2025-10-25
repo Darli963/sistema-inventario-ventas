@@ -195,34 +195,25 @@ resource "aws_s3_bucket_website_configuration" "frontend_website" {
 }
 
 
-# Control de Acceso de Origen de CloudFront (OAC) para S3
-resource "aws_cloudfront_origin_access_control" "oac" {
-  name                              = "${local.prefix}-${var.environment}-oac"
-  description                       = "OAC for ${local.prefix}-${var.environment}-frontend"
-  origin_access_control_origin_type = "s3"
-  signing_behavior                  = "always"
-  signing_protocol                  = "sigv4"
+# Identidad de acceso de origen de CloudFront (OAI)
+resource "aws_cloudfront_origin_access_identity" "oai" {
+  comment = "OAI for ${local.prefix}-${var.environment}-frontend"
 }
 
-# Política de acceso para el bucket frontend (permitir acceso solo vía CloudFront con OAC)
+# Política de acceso para el bucket frontend (permitir acceso solo a OAI)
 resource "aws_s3_bucket_policy" "frontend_policy" {
   bucket = aws_s3_bucket.frontend_bucket.id
   policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
       {
-        Sid    = "AllowCloudFrontOACRead",
+        Sid    = "AllowCloudFrontOAIRead",
         Effect = "Allow",
         Principal = {
-          Service = "cloudfront.amazonaws.com"
+          CanonicalUser = aws_cloudfront_origin_access_identity.oai.s3_canonical_user_id
         },
         Action   = ["s3:GetObject"],
-        Resource = "${aws_s3_bucket.frontend_bucket.arn}/*",
-        Condition = {
-          StringEquals = {
-            "AWS:SourceArn" = aws_cloudfront_distribution.frontend_distribution.arn
-          }
-        }
+        Resource = "${aws_s3_bucket.frontend_bucket.arn}/*"
       }
     ]
   })
@@ -231,16 +222,17 @@ resource "aws_s3_bucket_policy" "frontend_policy" {
 # CloudFront para distribución del frontend
 resource "aws_cloudfront_distribution" "frontend_distribution" {
   origin {
-    domain_name              = aws_s3_bucket.frontend_bucket.bucket_regional_domain_name
-    origin_id                = "S3-${aws_s3_bucket.frontend_bucket.bucket}"
-    origin_access_control_id = aws_cloudfront_origin_access_control.oac.id
+    domain_name = aws_s3_bucket.frontend_bucket.bucket_regional_domain_name
+    origin_id   = "S3-${aws_s3_bucket.frontend_bucket.bucket}"
+    s3_origin_config {
+      origin_access_identity = aws_cloudfront_origin_access_identity.oai.cloudfront_access_identity_path
+    }
   }
 
   # Origen adicional para API Gateway
   origin {
     domain_name = replace(aws_apigatewayv2_api.api_gateway.api_endpoint, "https://", "")
     origin_id   = "API-Gateway"
-    origin_path = "/${var.environment}"
 
     custom_origin_config {
       http_port              = 80
@@ -256,7 +248,6 @@ resource "aws_cloudfront_distribution" "frontend_distribution" {
   price_class         = var.environment == "prod" ? "PriceClass_All" : "PriceClass_100"
   http_version        = "http2and3"
   web_acl_id          = aws_wafv2_web_acl.frontend_waf.arn
-  aliases             = local.app_domain_enabled ? [var.domain_name] : []
 
   # Configuración de cache optimizada
   default_cache_behavior {
@@ -349,7 +340,13 @@ resource "aws_cloudfront_distribution" "frontend_distribution" {
     target_origin_id = "API-Gateway"
     compress         = true
 
-    origin_request_policy_id = aws_cloudfront_origin_request_policy.api_origin_request.id
+    forwarded_values {
+      query_string = true
+      cookies {
+        forward = "all"
+      }
+      headers = ["Authorization", "Content-Type", "Accept", "Origin", "Referer", "User-Agent"]
+    }
 
     viewer_protocol_policy = "redirect-to-https"
     min_ttl                = 0
@@ -391,9 +388,7 @@ resource "aws_cloudfront_distribution" "frontend_distribution" {
   }
 
   viewer_certificate {
-    acm_certificate_arn            = local.app_domain_enabled ? aws_acm_certificate.app_cert[0].arn : null
-    cloudfront_default_certificate = local.app_domain_enabled ? false : true
-    ssl_support_method             = local.app_domain_enabled ? "sni-only" : null
+    cloudfront_default_certificate = true
     minimum_protocol_version       = "TLSv1.2_2021"
   }
 
@@ -472,23 +467,57 @@ resource "aws_s3_bucket_lifecycle_configuration" "cloudfront_logs_lifecycle" {
   }
 }
 
-# Origin Request Policy para API (/api/*)
-resource "aws_cloudfront_origin_request_policy" "api_origin_request" {
-  name    = "${local.prefix}-${var.environment}-api-origin-request"
-  comment = "Policy for API Gateway via CloudFront (/api/*)"
-
-  headers_config {
-    header_behavior = "whitelist"
-    headers {
-      items = ["Authorization", "Content-Type", "Accept", "Origin", "Referer", "User-Agent"]
-    }
-  }
-
-  cookies_config {
-    cookie_behavior = "all"
-  }
-
-  query_strings_config {
-    query_string_behavior = "all"
-  }
+# Política SecureTransport y SSE-KMS para bucket privado
+resource "aws_s3_bucket_policy" "private_secure_transport_policy" {
+  bucket = aws_s3_bucket.private_bucket.id
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Sid       = "DenyInsecureTransport",
+        Effect    = "Deny",
+        Principal = "*",
+        Action    = "s3:*",
+        Resource = [
+          aws_s3_bucket.private_bucket.arn,
+          "${aws_s3_bucket.private_bucket.arn}/*"
+        ],
+        Condition = {
+          Bool = {
+            "aws:SecureTransport" = "false"
+          }
+        }
+      },
+      {
+        Sid       = "DenyIncorrectEncryptionHeader",
+        Effect    = "Deny",
+        Principal = "*",
+        Action    = "s3:PutObject",
+        Resource  = "${aws_s3_bucket.private_bucket.arn}/*",
+        Condition = {
+          StringNotEquals = {
+            "s3:x-amz-server-side-encryption" = "aws:kms"
+          },
+          Null = {
+            "s3:x-amz-server-side-encryption" = "false"
+          }
+        }
+      },
+      {
+        Sid       = "DenyWrongKMSKey",
+        Effect    = "Deny",
+        Principal = "*",
+        Action    = "s3:PutObject",
+        Resource  = "${aws_s3_bucket.private_bucket.arn}/*",
+        Condition = {
+          StringNotEquals = {
+            "s3:x-amz-server-side-encryption-aws-kms-key-id" = aws_kms_key.data_key.arn
+          },
+          Null = {
+            "s3:x-amz-server-side-encryption-aws-kms-key-id" = "false"
+          }
+        }
+      }
+    ]
+  })
 }

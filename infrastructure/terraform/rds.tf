@@ -192,3 +192,96 @@ resource "aws_iam_role_policy_attachment" "rds_monitoring" {
   role       = aws_iam_role.rds_monitoring[0].name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole"
 }
+
+# Rol IAM para RDS Proxy (acceso a Secrets Manager)
+resource "aws_iam_role" "rds_proxy_role" {
+  name = "${local.prefix}-${var.environment}-rds-proxy-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Action = "sts:AssumeRole",
+        Effect = "Allow",
+        Principal = {
+          Service = "rds.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = local.common_tags
+}
+
+# Adjuntar permisos para leer secretos y descifrar con KMS
+resource "aws_iam_role_policy_attachment" "rds_proxy_secrets_attach" {
+  role       = aws_iam_role.rds_proxy_role.name
+  policy_arn = aws_iam_policy.secrets_access.arn
+}
+
+# Security Group para RDS Proxy
+resource "aws_security_group" "rds_proxy_sg" {
+  name        = "${local.prefix}-${var.environment}-sg-rds-proxy"
+  description = "Security Group para RDS Proxy"
+  vpc_id      = aws_vpc.main.id
+
+  # Permitir conexiones desde Lambdas al puerto de la base de datos
+  ingress {
+    description     = "DB access from Lambdas via Proxy"
+    from_port       = var.db_port
+    to_port         = var.db_port
+    protocol        = "tcp"
+    security_groups = [aws_security_group.lambda_sg.id]
+  }
+
+  # Salida hacia RDS en el puerto de la base de datos
+  egress {
+    description = "DB egress to RDS"
+    from_port   = var.db_port
+    to_port     = var.db_port
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
+  tags = merge(local.common_tags, { Name = "${local.prefix}-${var.environment}-sg-rds-proxy" })
+}
+
+# RDS Proxy (MySQL)
+resource "aws_db_proxy" "db_proxy" {
+  name                   = "${local.prefix}-${var.environment}-db-proxy"
+  engine_family          = "MYSQL"
+  idle_client_timeout    = 1800
+  require_tls            = true
+  vpc_subnet_ids         = aws_subnet.private[*].id
+  vpc_security_group_ids = [aws_security_group.rds_proxy_sg.id]
+  role_arn               = aws_iam_role.rds_proxy_role.arn
+
+  auth {
+    auth_scheme = "SECRETS"
+    description = "Credencial principal"
+    iam_auth    = "DISABLED"
+    secret_arn  = aws_db_instance.rds_primary.master_user_secret[0].secret_arn
+  }
+
+  tags = merge(local.common_tags, { Name = "${local.prefix}-${var.environment}-db-proxy" })
+
+  depends_on = [aws_iam_role_policy_attachment.rds_proxy_secrets_attach, aws_db_instance.rds_primary]
+}
+
+# Ajustes del pool de conexiones del Proxy
+resource "aws_db_proxy_default_target_group" "db_proxy" {
+  db_proxy_name = aws_db_proxy.db_proxy.name
+
+  connection_pool_config {
+    max_connections_percent      = 90
+    max_idle_connections_percent = 50
+    connection_borrow_timeout    = 120
+  }
+}
+
+# Asociar el Proxy a la instancia RDS primaria
+resource "aws_db_proxy_target" "rds_primary" {
+  db_proxy_name          = aws_db_proxy.db_proxy.name
+  target_group_name      = aws_db_proxy_default_target_group.db_proxy.name
+  db_instance_identifier = aws_db_instance.rds_primary.id
+}
