@@ -1,7 +1,7 @@
 const getBaseUrl = () => {
-  const fromStorage = localStorage.getItem('apiBaseUrl');
-  const fromConfig = window.CONFIG?.API_BASE_URL || '';
-  const base = fromStorage || fromConfig;
+  const fromConfig = (typeof window !== 'undefined' && window.CONFIG && window.CONFIG.API_BASE_URL) ? window.CONFIG.API_BASE_URL : '';
+  const fromStorage = (typeof localStorage !== 'undefined') ? localStorage.getItem('apiBaseUrl') : '';
+  const base = fromConfig || fromStorage || '';
   if (!base) throw new Error('Configura la URL base del API en Configuración');
   return base.replace(/\/$/, '');
 };

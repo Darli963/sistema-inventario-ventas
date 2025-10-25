@@ -1,5 +1,7 @@
 export default function render(el) {
-  const current = localStorage.getItem('apiBaseUrl') || (window.CONFIG?.API_BASE_URL || '');
+  const fromConfig = (typeof window !== 'undefined' && window.CONFIG && window.CONFIG.API_BASE_URL) ? window.CONFIG.API_BASE_URL : '';
+  const fromStorage = (typeof localStorage !== 'undefined') ? localStorage.getItem('apiBaseUrl') : '';
+  const current = fromConfig || fromStorage || '';
   el.innerHTML = `
     <div class="card">
       <h2>Configuración</h2>
@@ -31,7 +33,7 @@ export default function render(el) {
   });
   clearBtn.addEventListener('click', () => {
     localStorage.removeItem('apiBaseUrl');
-    el.querySelector('#baseUrl').value = '';
+    el.querySelector('#baseUrl').value = fromConfig || '';
     msg.innerHTML = '<div class="alert success">Configuración eliminada; se usará config.js si está definido</div>';
   });
 }
