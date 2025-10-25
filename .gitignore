@@ -6,6 +6,7 @@
 *.tfstate.backup
 *.tfvars
 *.tfvars.json
+*.tfplan
 crash.log
 override.tf
 override.tf.json
@@ -14,6 +15,8 @@ terraform.tfstate.d/
 *.bak
 *.tmp
 *.log
+.terraform.lock.hcl
+
 
 # Lock file (opcional subirlo, pero si usas varios SO es mejor ignorarlo)
 .terraform.lock.hcl
