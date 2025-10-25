@@ -82,11 +82,11 @@ resource "aws_cloudwatch_log_group" "api_gateway_logs" {
 
 # Dominio personalizado (opcional para producción)
 resource "aws_apigatewayv2_domain_name" "api_domain" {
-  count       = var.environment == "prod" && var.api_domain_name != "" ? 1 : 0
+  count       = local.api_domain_enabled ? 1 : 0
   domain_name = var.api_domain_name
 
   domain_name_configuration {
-    certificate_arn = var.api_certificate_arn
+    certificate_arn = aws_acm_certificate.api_cert[0].arn
     endpoint_type   = "REGIONAL"
     security_policy = "TLS_1_2"
   }
@@ -101,10 +101,11 @@ resource "aws_apigatewayv2_domain_name" "api_domain" {
 
 # Mapeo del dominio al stage
 resource "aws_apigatewayv2_api_mapping" "api_mapping" {
-  count       = var.environment == "prod" && var.api_domain_name != "" ? 1 : 0
-  api_id      = aws_apigatewayv2_api.api_gateway.id
-  domain_name = aws_apigatewayv2_domain_name.api_domain[0].id
-  stage       = aws_apigatewayv2_stage.api_stage.id
+  count           = local.api_domain_enabled ? 1 : 0
+  api_id          = aws_apigatewayv2_api.api_gateway.id
+  domain_name     = aws_apigatewayv2_domain_name.api_domain[0].id
+  stage           = aws_apigatewayv2_stage.api_stage.id
+  api_mapping_key = "api"
 }
 
 # Autorización JWT (preparado para futuro uso)
@@ -140,39 +141,39 @@ resource "aws_apigatewayv2_route" "health_check" {
 
 # Integraciones Lambda (AWS_PROXY) para módulos
 resource "aws_apigatewayv2_integration" "productos_lambda" {
-  api_id                  = aws_apigatewayv2_api.api_gateway.id
-  integration_type        = "AWS_PROXY"
-  integration_method      = "POST"
-  payload_format_version  = "2.0"
-  description             = "Integración Lambda Productos"
-  integration_uri         = aws_lambda_function.productos_lambda.invoke_arn
+  api_id                 = aws_apigatewayv2_api.api_gateway.id
+  integration_type       = "AWS_PROXY"
+  integration_method     = "POST"
+  payload_format_version = "2.0"
+  description            = "Integración Lambda Productos"
+  integration_uri        = aws_lambda_function.productos_lambda.invoke_arn
 }
 
 resource "aws_apigatewayv2_integration" "inventario_lambda" {
-  api_id                  = aws_apigatewayv2_api.api_gateway.id
-  integration_type        = "AWS_PROXY"
-  integration_method      = "POST"
-  payload_format_version  = "2.0"
-  description             = "Integración Lambda Inventario"
-  integration_uri         = aws_lambda_function.inventario_lambda.invoke_arn
+  api_id                 = aws_apigatewayv2_api.api_gateway.id
+  integration_type       = "AWS_PROXY"
+  integration_method     = "POST"
+  payload_format_version = "2.0"
+  description            = "Integración Lambda Inventario"
+  integration_uri        = aws_lambda_function.inventario_lambda.invoke_arn
 }
 
 resource "aws_apigatewayv2_integration" "ventas_lambda" {
-  api_id                  = aws_apigatewayv2_api.api_gateway.id
-  integration_type        = "AWS_PROXY"
-  integration_method      = "POST"
-  payload_format_version  = "2.0"
-  description             = "Integración Lambda Ventas"
-  integration_uri         = aws_lambda_function.ventas_lambda.invoke_arn
+  api_id                 = aws_apigatewayv2_api.api_gateway.id
+  integration_type       = "AWS_PROXY"
+  integration_method     = "POST"
+  payload_format_version = "2.0"
+  description            = "Integración Lambda Ventas"
+  integration_uri        = aws_lambda_function.ventas_lambda.invoke_arn
 }
 
 resource "aws_apigatewayv2_integration" "reportes_lambda" {
-  api_id                  = aws_apigatewayv2_api.api_gateway.id
-  integration_type        = "AWS_PROXY"
-  integration_method      = "POST"
-  payload_format_version  = "2.0"
-  description             = "Integración Lambda Reportes"
-  integration_uri         = aws_lambda_function.reportes_lambda.invoke_arn
+  api_id                 = aws_apigatewayv2_api.api_gateway.id
+  integration_type       = "AWS_PROXY"
+  integration_method     = "POST"
+  payload_format_version = "2.0"
+  description            = "Integración Lambda Reportes"
+  integration_uri        = aws_lambda_function.reportes_lambda.invoke_arn
 }
 
 # Rutas y métodos por módulo

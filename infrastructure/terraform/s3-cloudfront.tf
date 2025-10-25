@@ -256,6 +256,7 @@ resource "aws_cloudfront_distribution" "frontend_distribution" {
   price_class         = var.environment == "prod" ? "PriceClass_All" : "PriceClass_100"
   http_version        = "http2and3"
   web_acl_id          = aws_wafv2_web_acl.frontend_waf.arn
+  aliases             = local.app_domain_enabled ? [var.domain_name] : []
 
   # Configuración de cache optimizada
   default_cache_behavior {
@@ -390,7 +391,9 @@ resource "aws_cloudfront_distribution" "frontend_distribution" {
   }
 
   viewer_certificate {
-    cloudfront_default_certificate = true
+    acm_certificate_arn            = local.app_domain_enabled ? aws_acm_certificate.app_cert[0].arn : null
+    cloudfront_default_certificate = local.app_domain_enabled ? false : true
+    ssl_support_method             = local.app_domain_enabled ? "sni-only" : null
     minimum_protocol_version       = "TLSv1.2_2021"
   }
 

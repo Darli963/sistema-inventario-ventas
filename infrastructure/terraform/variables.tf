@@ -132,3 +132,9 @@ variable "rotation_lambda_arn" {
   type        = string
   default     = ""
 }
+
+variable "hosted_zone_name" {
+  description = "Nombre de la Hosted Zone de Route 53 (ej. dominio.com)"
+  type        = string
+  default     = ""
+}

@@ -2,7 +2,7 @@
 
 locals {
   lambda_names = {
-    productos = "${local.prefix}-${var.environment}-productos-lambda"
+    productos  = "${local.prefix}-${var.environment}-productos-lambda"
     inventario = "${local.prefix}-${var.environment}-inventario-lambda"
     ventas     = "${local.prefix}-${var.environment}-ventas-lambda"
     reportes   = "${local.prefix}-${var.environment}-reportes-lambda"
@@ -55,8 +55,8 @@ resource "aws_lambda_function" "productos_lambda" {
   filename         = data.archive_file.backend_zip.output_path
   source_code_hash = data.archive_file.backend_zip.output_base64sha256
 
-  memory_size      = 512
-  timeout          = 30
+  memory_size = 512
+  timeout     = 30
   ephemeral_storage {
     size = var.environment == "prod" ? 10240 : 512
   }
@@ -100,8 +100,8 @@ resource "aws_lambda_function" "inventario_lambda" {
   filename         = data.archive_file.backend_zip.output_path
   source_code_hash = data.archive_file.backend_zip.output_base64sha256
 
-  memory_size      = 512
-  timeout          = 30
+  memory_size = 512
+  timeout     = 30
   ephemeral_storage {
     size = var.environment == "prod" ? 10240 : 512
   }
@@ -145,8 +145,8 @@ resource "aws_lambda_function" "ventas_lambda" {
   filename         = data.archive_file.backend_zip.output_path
   source_code_hash = data.archive_file.backend_zip.output_base64sha256
 
-  memory_size      = 512
-  timeout          = 30
+  memory_size = 512
+  timeout     = 30
   ephemeral_storage {
     size = var.environment == "prod" ? 10240 : 512
   }
@@ -190,8 +190,8 @@ resource "aws_lambda_function" "reportes_lambda" {
   filename         = data.archive_file.backend_zip.output_path
   source_code_hash = data.archive_file.backend_zip.output_base64sha256
 
-  memory_size      = 512
-  timeout          = 30
+  memory_size = 512
+  timeout     = 30
   ephemeral_storage {
     size = var.environment == "prod" ? 10240 : 512
   }
@@ -235,8 +235,8 @@ resource "aws_lambda_function" "health_lambda" {
   filename         = data.archive_file.backend_zip.output_path
   source_code_hash = data.archive_file.backend_zip.output_base64sha256
 
-  memory_size      = 128
-  timeout          = 5
+  memory_size = 128
+  timeout     = 5
 
   environment {
     variables = {
