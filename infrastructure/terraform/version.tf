@@ -12,8 +12,5 @@ terraform {
     }
   }
 
-  # Backend remoto en S3 con locking de DynamoDB.
-  # Los valores concretos (bucket, key, region, dynamodb_table) se pasan en CI
-  # via `terraform init -backend-config=...` para soportar múltiples entornos.
   backend "s3" {}
 }

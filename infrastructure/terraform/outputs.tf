@@ -30,12 +30,18 @@ output "rds_port" {
   value       = aws_db_instance.rds_primary.port
 }
 
-output "alb_arn" {
-  description = "ARN del Application Load Balancer"
-  value       = aws_lb.main.arn
+# Outputs normalizados (manteniendo compatibilidad con los existentes)
+output "cloudfront_domain" {
+  description = "Nombre de dominio de CloudFront"
+  value       = aws_cloudfront_distribution.frontend_distribution.domain_name
 }
 
-output "alb_dns_name" {
-  description = "DNS público del ALB"
-  value       = aws_lb.main.dns_name
+output "s3_frontend_bucket" {
+  description = "Nombre del bucket S3 del frontend"
+  value       = aws_s3_bucket.frontend_bucket.bucket
+}
+
+output "rds_endpoint" {
+  description = "Endpoint principal de RDS"
+  value       = aws_db_instance.rds_primary.address
 }
