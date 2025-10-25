@@ -233,6 +233,7 @@ resource "aws_cloudfront_distribution" "frontend_distribution" {
   origin {
     domain_name = replace(aws_apigatewayv2_api.api_gateway.api_endpoint, "https://", "")
     origin_id   = "API-Gateway"
+    origin_path = "/${var.environment}"
 
     custom_origin_config {
       http_port              = 80
