@@ -115,6 +115,11 @@ variable "jwt_issuer" {
   default     = ""
 }
 
+variable "alb_certificate_arn" {
+  description = "ARN del certificado ACM para el ALB (HTTPS opcional)"
+  type        = string
+  default     = ""
+}
 
 variable "enable_secret_rotation" {
   description = "Habilitar rotación automática de Secrets Manager (solo prod)"
