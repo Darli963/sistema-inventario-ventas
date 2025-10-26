@@ -1,13 +1,13 @@
 # =========================================
 # Terraform
 # =========================================
-.terraform/
-*.tfstate
+.terraform/                 # Carpeta local de Terraform
+*.tfstate                   # Archivos de estado
 *.tfstate.backup
-*.tfvars
+*.tfvars                    # Variables sensibles
 *.tfvars.json
-*.tfplan
-crash.log
+*.tfplan                    # Archivos de plan
+crash.log                   # Logs de errores
 override.tf
 override.tf.json
 terraform.tfstate.d/
@@ -15,10 +15,8 @@ terraform.tfstate.d/
 *.bak
 *.tmp
 *.log
-.terraform.lock.hcl
 
-
-# Lock file (opcional subirlo, pero si usas varios SO es mejor ignorarlo)
+# Evita subir el lock si trabajas en distintos SO o equipos
 .terraform.lock.hcl
 
 # =========================================
@@ -69,11 +67,17 @@ desktop.ini
 *.zip
 *.tar.gz
 *.gz
-infrastructure/new-clean-repo/
+
+# =========================================
+# Limpieza o clones temporales
+# =========================================
 infrastructure/new-clean-repo/
 
-# Terraform state/plan (fix)
+# =========================================
+# Terraform state/plan (redundante pero seguro)
+# =========================================
 terraform.tfstate
 tfplan
 **/terraform.tfstate
 **/tfplan
+
