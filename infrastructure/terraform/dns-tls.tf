@@ -33,9 +33,9 @@ resource "aws_route53_record" "cert_validation" {
 
 # Validación del certificado ACM
 resource "aws_acm_certificate_validation" "app_cert_validation" {
-  count           = var.create_app_certificate && var.domain_name != null && trimspace(var.domain_name) != "" ? 1 : 0
-  provider        = aws.global
-  certificate_arn = aws_acm_certificate.app_cert[0].arn
+  count                   = var.create_app_certificate && var.domain_name != null && trimspace(var.domain_name) != "" ? 1 : 0
+  provider                = aws.global
+  certificate_arn         = aws_acm_certificate.app_cert[0].arn
   validation_record_fqdns = var.hosted_zone_id != "" ? [for rec in aws_route53_record.cert_validation : rec.fqdn] : []
 }
 
