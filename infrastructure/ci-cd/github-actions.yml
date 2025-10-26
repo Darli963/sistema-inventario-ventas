@@ -19,6 +19,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Prepare backend deps for Lambda (Node 22 on AL2023)
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}/src/backend:/var/task" \
+            -w /var/task \
+            public.ecr.aws/lambda/nodejs:22 \
+            /bin/sh -c "npm ci --omit=dev"
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -47,7 +55,6 @@ jobs:
           terraform workspace select ${ENVIRONMENT} || terraform workspace new ${ENVIRONMENT}
 
       - name: Terraform Fmt
-        working-directory: infrastructure/terraform
         run: terraform fmt -recursive
 
       - name: Terraform Validate
@@ -92,7 +99,6 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Terraform Init (remote backend)
-        working-directory: infrastructure/terraform
         run: |
           terraform init \
             -backend-config="bucket=${TFSTATE_BUCKET}" \
@@ -130,13 +136,12 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '22'
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Deploy Frontend

@@ -23,6 +23,18 @@ pipeline {
       }
     }
 
+    stage('Prepare Backend Deps (Lambda Node 22)') {
+      steps {
+        sh '''
+          docker run --rm \
+            -v "$PWD/src/backend:/var/task" \
+            -w /var/task \
+            public.ecr.aws/lambda/nodejs:22 \
+            /bin/sh -c "npm ci --omit=dev"
+        '''
+      }
+    }
+
     stage('Terraform Init & Plan') {
       steps {
         withCredentials([usernamePassword(credentialsId: 'aws-creds', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
