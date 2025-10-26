@@ -47,7 +47,7 @@ jobs:
             -backend-config="key=envs/${ENVIRONMENT}/terraform.tfstate" \
             -backend-config="region=${AWS_REGION}" \
             -backend-config="dynamodb_table=${TFSTATE_LOCK_TABLE}" \
-            -backend-config="encrypt=true"
+
 
       - name: Terraform Workspace Select
         working-directory: infrastructure/terraform
@@ -139,7 +139,6 @@ jobs:
           node-version: '22'
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-region: ${{ env.AWS_REGION }}
