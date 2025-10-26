@@ -71,3 +71,9 @@ desktop.ini
 *.gz
 infrastructure/new-clean-repo/
 infrastructure/new-clean-repo/
+
+# Terraform state/plan (fix)
+terraform.tfstate
+tfplan
+**/terraform.tfstate
+**/tfplan
