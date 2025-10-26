@@ -53,7 +53,7 @@ resource "aws_cloudwatch_log_group" "lambda_logs_health" {
 resource "aws_lambda_function" "productos_lambda" {
   function_name = local.lambda_names.productos
   description   = "CRUD de productos"
-  runtime       = "nodejs18.x"
+  runtime       = "nodejs22.x"
   role          = aws_iam_role.lambda_role_productos.arn
   handler       = "lambdas/productos/handler.handler"
 
@@ -102,7 +102,7 @@ resource "aws_lambda_function" "productos_lambda" {
 resource "aws_lambda_function" "inventario_lambda" {
   function_name = local.lambda_names.inventario
   description   = "Gestión de inventario"
-  runtime       = "nodejs18.x"
+  runtime       = "nodejs22.x"
   role          = aws_iam_role.lambda_role_inventario.arn
   handler       = "lambdas/inventario/handler.handler"
 
@@ -151,7 +151,7 @@ resource "aws_lambda_function" "inventario_lambda" {
 resource "aws_lambda_function" "ventas_lambda" {
   function_name = local.lambda_names.ventas
   description   = "Registro de ventas"
-  runtime       = "nodejs18.x"
+  runtime       = "nodejs22.x"
   role          = aws_iam_role.lambda_role_ventas.arn
   handler       = "lambdas/ventas/handler.handler"
 
@@ -200,7 +200,7 @@ resource "aws_lambda_function" "ventas_lambda" {
 resource "aws_lambda_function" "reportes_lambda" {
   function_name = local.lambda_names.reportes
   description   = "Consultas de reportes"
-  runtime       = "nodejs18.x"
+  runtime       = "nodejs22.x"
   role          = aws_iam_role.lambda_role_reportes.arn
   handler       = "lambdas/reportes/handler.handler"
 
@@ -249,7 +249,7 @@ resource "aws_lambda_function" "reportes_lambda" {
 resource "aws_lambda_function" "health_lambda" {
   function_name = local.lambda_names.health
   description   = "Health check simple"
-  runtime       = "nodejs18.x"
+  runtime       = "nodejs22.x"
   role          = aws_iam_role.lambda_role_health.arn
   handler       = "lambdas/health/handler.handler"
 
