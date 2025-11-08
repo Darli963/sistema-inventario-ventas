@@ -80,4 +80,11 @@ terraform.tfstate
 tfplan
 **/terraform.tfstate
 **/tfplan
+**/.terraform/
+**/terraform_state.json
+
+# Reportes locales de Checkov
+infrastructure/terraform/checkov-results.json/
+infrastructure/terraform/checkov-results.xml/
+infrastructure/terraform/results.xml/
 
