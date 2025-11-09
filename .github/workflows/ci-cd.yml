@@ -36,6 +36,28 @@ jobs:
             infrastructure/terraform/checkov-results.xml
             infrastructure/terraform/checkov-results.json
 
+      - name: Summarize Checkov Findings
+        working-directory: infrastructure/terraform
+        run: |
+          echo "## Checkov Findings Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if command -v jq >/dev/null 2>&1; then
+            jq -r '
+              def counts_by_sev:
+                ( .results.failed_checks // [] )
+                | group_by(.severity)
+                | map({(.[0].severity): length})
+                | add // {};
+              "- Failed checks: \(.results.failed_checks | length)" ,
+              "- Passed checks: \(.results.passed_checks | length)" ,
+              "- Skipped checks: \(.results.skipped_checks | length)" ,
+              "- Parsing errors: \(.results.parsing_errors | length)" ,
+              "- Severities: \(counts_by_sev)"
+            ' checkov-results.json/results_json.json >> $GITHUB_STEP_SUMMARY || echo "No JSON summary available" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "jq no disponible; descárgate el artefacto checkov-results para ver el JSON completo." >> $GITHUB_STEP_SUMMARY
+          fi
+
   plan:
     name: Terraform Plan (staging)
     runs-on: ubuntu-latest
