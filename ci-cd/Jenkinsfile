@@ -1,14 +1,17 @@
+#!/usr/bin/env groovy
+/**
+ * Jenkinsfile - Sistema de Inventario y Ventas
+ * Automatiza el build, infraestructura y despliegue en AWS.
+ */
+
 pipeline {
   agent any
-
-  options {
-    timestamps()
-  }
+  options { timestamps() }
 
   parameters {
-    choice(name: 'ENVIRONMENT', choices: ['staging','prod'], description: 'Entorno de despliegue')
-    string(name: 'TFSTATE_BUCKET', defaultValue: 'mc-terraform-state', description: 'Bucket S3 para backend de Terraform')
-    string(name: 'TFSTATE_LOCK_TABLE', defaultValue: 'mc-terraform-locks', description: 'Tabla DynamoDB para locking de Terraform')
+    choice(name: 'ENVIRONMENT', choices: ['staging','prod'], description: 'Entorno')
+    string(name: 'TFSTATE_BUCKET', defaultValue: 'mc-terraform-state', description: 'Bucket backend Terraform')
+    string(name: 'TFSTATE_LOCK_TABLE', defaultValue: 'mc-terraform-locks', description: 'Tabla DynamoDB para locks')
   }
 
   environment {
@@ -23,7 +26,7 @@ pipeline {
       }
     }
 
-    stage('Prepare Backend Deps (Lambda Node 22)') {
+    stage('Backend Deps') {
       steps {
         sh '''
           docker run --rm \
@@ -40,7 +43,14 @@ pipeline {
         withCredentials([usernamePassword(credentialsId: 'aws-creds', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
           dir('infrastructure/terraform') {
             sh 'terraform fmt -recursive'
-            sh 'terraform init -backend-config="bucket=${TFSTATE_BUCKET}" -backend-config="key=envs/${ENVIRONMENT}/terraform.tfstate" -backend-config="region=${AWS_DEFAULT_REGION}" -backend-config="dynamodb_table=${TFSTATE_LOCK_TABLE}" -backend-config="encrypt=true"'
+            sh '''
+              terraform init \
+                -backend-config="bucket=${TFSTATE_BUCKET}" \
+                -backend-config="key=envs/${ENVIRONMENT}/terraform.tfstate" \
+                -backend-config="region=${AWS_DEFAULT_REGION}" \
+                -backend-config="dynamodb_table=${TFSTATE_LOCK_TABLE}" \
+                -backend-config="encrypt=true"
+            '''
             sh 'terraform workspace select ${ENVIRONMENT} || terraform workspace new ${ENVIRONMENT}'
             sh 'terraform validate'
             sh 'terraform plan -var="environment=${ENVIRONMENT}" -out="tfplan-${ENVIRONMENT}.bin" -no-color'
@@ -50,9 +60,7 @@ pipeline {
     }
 
     stage('Terraform Apply (staging)') {
-      when {
-        expression { params.ENVIRONMENT == 'staging' }
-      }
+      when { expression { params.ENVIRONMENT == 'staging' } }
       steps {
         withCredentials([usernamePassword(credentialsId: 'aws-creds', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
           timeout(time: 10, unit: 'MINUTES') {
@@ -81,11 +89,7 @@ pipeline {
   }
 
   post {
-    success {
-      echo 'Despliegue y verificación completados'
-    }
-    failure {
-      echo 'Fallo en CI/CD'
-    }
+    success { echo '✅ Despliegue completado' }
+    failure { echo '❌ Error en CI/CD' }
   }
 }
